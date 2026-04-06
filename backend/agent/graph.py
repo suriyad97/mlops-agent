@@ -27,6 +27,7 @@ from agent.tools.azure_repo import (
     read_file_from_repo,
     list_repo_files,
     commit_file_to_repo,
+    scan_azure_repo,
 )
 from agent.tools.azure_ml import (
     trigger_ct_pipeline,
@@ -85,16 +86,20 @@ You oversee these pipelines:
 - Inference Pipeline: Batch scoring using champion model (runs twice a month)
 - Drift Monitoring: Data drift, prediction drift, concept drift
 
-When a user gives raw source code (no Dockerfile or pipeline YAMLs), your first job is to:
-1. Scan the repo thoroughly and present your understanding of the project
-2. Ask the user to confirm the ML task type and primary evaluation metric
-3. Generate all missing artifacts (Dockerfile, YAMLs)
-4. Run sanity checks before touching any Azure resources
-5. Get human approval at each critical decision point
+## Repo Scanning
+When a user asks you to scan, understand, or explore their repo:
+1. ALWAYS start with `scan_azure_repo` — it reads the whole repo in one call and returns
+   entrypoints, requirements, configs, schema files, framework hints, and missing artifacts.
+2. Present your full understanding clearly to the user after scanning.
+3. Ask the user to confirm: ML task type (classification/regression/etc.) and primary metric.
+4. Then generate all missing artifacts (Dockerfile, pipeline YAMLs).
 
-Always be clear about what you are doing and why. When jobs are running,
-poll their status and keep the user informed. Never assume — always confirm
-before destructive or irreversible actions like model promotion."""
+## General Rules
+- Run sanity checks before touching any Azure resources.
+- Get human approval at each critical decision point (model promotion, pipeline triggers).
+- Always be clear about what you are doing and why.
+- When jobs are running, poll their status and keep the user informed.
+- Never assume — always confirm before destructive or irreversible actions."""
 
 ENVIRONMENT_AGENT_PROMPT = """You are the Environment Agent for an MLOps system on Azure ML.
 Your responsibilities:
@@ -164,7 +169,7 @@ monitoring_agent = create_react_agent(
 
 supervisor_llm = llm.bind_tools([
     # Repo & artifact tools
-    read_file_from_repo, list_repo_files, commit_file_to_repo,
+    scan_azure_repo, read_file_from_repo, list_repo_files, commit_file_to_repo,
     # Artifact generation
     generate_dockerfile, generate_aml_environment_yaml,
     generate_ct_pipeline_yaml, generate_inference_pipeline_yaml,
@@ -226,7 +231,7 @@ def tool_executor_node(state: MLOpsState) -> MLOpsState:
 
     all_tools = {
         t.name: t for t in [
-            read_file_from_repo, list_repo_files, commit_file_to_repo,
+            scan_azure_repo, read_file_from_repo, list_repo_files, commit_file_to_repo,
             generate_dockerfile, generate_aml_environment_yaml,
             generate_ct_pipeline_yaml, generate_inference_pipeline_yaml,
             generate_drift_pipeline_yaml, generate_azdo_ci_yaml,

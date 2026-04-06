@@ -60,11 +60,11 @@ I can help you manage your entire ML lifecycle on Azure ML.
 - Type **`status`** or **`show dashboard`** to see a live metrics snapshot."""
 
     actions = [
-        cl.Action(name="scan_repo",      value="scan_repo",      label="🔍 Scan Repo"),
-        cl.Action(name="run_training",   value="run_training",   label="🏋️ Run Training"),
-        cl.Action(name="drift_report",   value="drift_report",   label="📊 Drift Report"),
-        cl.Action(name="run_inference",  value="run_inference",  label="🔮 Run Inference"),
-        cl.Action(name="show_dashboard", value="show_dashboard", label="📈 Dashboard"),
+        cl.Action(name="scan_repo",      payload={"cmd": "scan_repo"},      label="🔍 Scan Repo"),
+        cl.Action(name="run_training",   payload={"cmd": "run_training"},   label="🏋️ Run Training"),
+        cl.Action(name="drift_report",   payload={"cmd": "drift_report"},   label="📊 Drift Report"),
+        cl.Action(name="run_inference",  payload={"cmd": "run_inference"},  label="🔮 Run Inference"),
+        cl.Action(name="show_dashboard", payload={"cmd": "show_dashboard"}, label="📈 Dashboard"),
     ]
 
     await cl.Message(content=welcome, actions=actions).send()
@@ -240,11 +240,11 @@ async def run_agent(user_text: str):
 
     # Re-attach quick action buttons after every reply
     actions = [
-        cl.Action(name="scan_repo",      value="scan_repo",      label="🔍 Scan Repo"),
-        cl.Action(name="run_training",   value="run_training",   label="🏋️ Run Training"),
-        cl.Action(name="drift_report",   value="drift_report",   label="📊 Drift Report"),
-        cl.Action(name="run_inference",  value="run_inference",  label="🔮 Run Inference"),
-        cl.Action(name="show_dashboard", value="show_dashboard", label="📈 Dashboard"),
+        cl.Action(name="scan_repo",      payload={"cmd": "scan_repo"},      label="🔍 Scan Repo"),
+        cl.Action(name="run_training",   payload={"cmd": "run_training"},   label="🏋️ Run Training"),
+        cl.Action(name="drift_report",   payload={"cmd": "drift_report"},   label="📊 Drift Report"),
+        cl.Action(name="run_inference",  payload={"cmd": "run_inference"},  label="🔮 Run Inference"),
+        cl.Action(name="show_dashboard", payload={"cmd": "show_dashboard"}, label="📈 Dashboard"),
     ]
     await cl.Message(content="", actions=actions, author="System").send()
 
@@ -258,13 +258,13 @@ async def handle_interrupt(prompt: str):
     res = await cl.AskActionMessage(
         content=f"⏸ **Agent needs your approval**\n\n{prompt}",
         actions=[
-            cl.Action(name="approve", value="yes",  label="✅ Approve / Yes"),
-            cl.Action(name="reject",  value="no",   label="❌ Reject / No"),
+            cl.Action(name="approve", payload={"value": "yes"}, label="✅ Approve / Yes"),
+            cl.Action(name="reject",  payload={"value": "no"},  label="❌ Reject / No"),
         ],
         timeout=300,
     ).send()
 
-    decision = res.get("value", "no") if res else "no"
+    decision = res.get("payload", {}).get("value", "no") if res else "no"
 
     # Post decision to backend and stream the resumed execution
     try:

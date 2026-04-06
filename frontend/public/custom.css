@@ -1,0 +1,98 @@
+/* MLOps Agent — Chainlit Custom Theme */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+  --bg-primary:   #0f1117;
+  --bg-secondary: #1a1f2e;
+  --bg-tertiary:  #131720;
+  --border:       #2d3748;
+  --accent:       #7c3aed;
+  --accent-light: #a78bfa;
+  --green:        #34d399;
+  --blue:         #38bdf8;
+  --amber:        #fbbf24;
+  --red:          #f87171;
+  --text-primary: #e2e8f0;
+  --text-muted:   #64748b;
+}
+
+/* Base */
+body, .MuiBox-root {
+  font-family: 'Inter', sans-serif !important;
+}
+
+/* Chat container background */
+.step, [class*="MessageContainer"] {
+  background: var(--bg-primary) !important;
+}
+
+/* Message bubbles */
+[class*="MessageContent"] {
+  background: var(--bg-secondary) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 10px !important;
+}
+
+/* Tool step blocks */
+[class*="Step"] {
+  border-left: 3px solid var(--blue) !important;
+  background: var(--bg-tertiary) !important;
+  border-radius: 6px !important;
+  margin: 4px 0 !important;
+}
+
+/* Step header */
+[class*="StepDetails"] {
+  color: var(--blue) !important;
+  font-size: 0.82rem !important;
+  font-weight: 600 !important;
+}
+
+/* Action buttons */
+button[class*="Action"] {
+  background: var(--bg-secondary) !important;
+  border: 1px solid var(--border) !important;
+  color: var(--text-primary) !important;
+  border-radius: 8px !important;
+  font-weight: 600 !important;
+  transition: all 0.2s ease !important;
+}
+button[class*="Action"]:hover {
+  border-color: var(--accent) !important;
+  color: var(--accent-light) !important;
+  box-shadow: 0 0 12px rgba(124, 58, 237, 0.3) !important;
+  transform: translateY(-1px) !important;
+}
+
+/* Send button */
+[class*="SubmitButton"] {
+  background: var(--accent) !important;
+  color: white !important;
+  border-radius: 8px !important;
+  transition: background 0.2s ease !important;
+}
+[class*="SubmitButton"]:hover {
+  background: #5b21b6 !important;
+}
+
+/* Input area */
+[class*="InputBox"], textarea {
+  background: var(--bg-secondary) !important;
+  border: 1px solid var(--border) !important;
+  color: var(--text-primary) !important;
+  border-radius: 10px !important;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-primary); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+/* AskUser prompt */
+[class*="AskUser"] {
+  background: #2e1f0c !important;
+  border: 1px solid var(--amber) !important;
+  border-radius: 10px !important;
+}

@@ -22,8 +22,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from agent.graph import build_graph
-from agent.state import MLOpsState
+from mlops_agent.graph import build_graph
+from mlops_agent.state import MLOpsState
 
 app = FastAPI(title="MLOps Agent API", version="1.0.0")
 

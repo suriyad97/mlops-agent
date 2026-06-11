@@ -1,0 +1,23 @@
+"""Online scoring entry for {{ model_name }} (AML init/run contract)."""
+import json
+import os
+from pathlib import Path
+
+import mlflow
+import pandas as pd
+
+model = None
+
+
+def init() -> None:
+    global model
+    model_dir = Path(os.environ["AZUREML_MODEL_DIR"])
+    candidates = list(model_dir.rglob("MLmodel"))
+    model = mlflow.pyfunc.load_model(str(candidates[0].parent) if candidates else str(model_dir))
+
+
+def run(raw_data: str) -> str:
+    payload = json.loads(raw_data)
+    df = pd.DataFrame(payload["data"])
+    predictions = model.predict(df)
+    return json.dumps({"predictions": pd.Series(predictions).tolist()})

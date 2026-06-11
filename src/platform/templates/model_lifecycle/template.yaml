@@ -1,0 +1,11 @@
+capability: model_lifecycle
+components:
+  registration_mechanism:
+    files:
+      - { src: register.yml.j2, dest: aml/components/register.yml }
+  promotion_mechanism:
+    files:
+      - { src: qa-promote-model.yml.j2, dest: azdopipelines/qa-promote-model.yml }
+  approval_gates:
+    files:
+      - { src: environments.md.j2, dest: .azuredevops/environments.md }

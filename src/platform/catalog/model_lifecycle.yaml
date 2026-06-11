@@ -1,0 +1,26 @@
+capability: model_lifecycle
+purpose: Models registered, compared, promoted through QA and Prod with approval gates
+depends_on: [training]
+enables: [batch_deployment, realtime_deployment, rollback]
+evidence:
+  - id: registration_mechanism
+    kind: code_semantic
+    description: Model registration after training — MAY be implemented entirely in AML/AzDO pipeline YAML (do not require Python files)
+    indicators: [register, registered_model, model_registry, mlflow.register, create_or_update model]
+    weight: 40
+  - id: promotion_mechanism
+    kind: azdo_pipeline
+    description: Pipeline stages or jobs that promote a registered model across environments (QA -> Prod), e.g. champion/challenger comparison
+    role: model promotion
+    weight: 35
+  - id: approval_gates
+    kind: azdo_pipeline
+    description: Human approval gates (AzDO environment checks) before QA/Prod promotion
+    role: approvals
+    weight: 25
+deliverables:
+  registration_mechanism: [aml/components/register.yml]
+  promotion_mechanism: [azdopipelines/qa-promote-model.yml]
+  approval_gates: [.azuredevops/environments.md]
+validation:
+  - azdo previewRun

@@ -1,0 +1,12 @@
+capability: environment_lifecycle
+components:
+  container_definition:
+    files:
+      - { src: Dockerfile.j2, dest: Dockerfile }
+      - { src: conda.yml.j2, dest: aml/conda.yml }
+  aml_environment:
+    files:
+      - { src: environment.yml.j2, dest: aml/environment.yml }
+  azdo_env_pipeline:
+    files:
+      - { src: ci-environment.yml.j2, dest: azdopipelines/ci-environment.yml }

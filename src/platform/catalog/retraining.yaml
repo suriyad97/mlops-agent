@@ -1,0 +1,26 @@
+capability: retraining
+purpose: Automatically retrain, re-register, and redeploy when drift thresholds are breached
+depends_on: [training, monitoring]
+enables: []
+evidence:
+  - id: trigger_mechanism
+    kind: code_semantic
+    description: Drift-threshold evaluation that triggers retraining (code or pipeline condition)
+    indicators: [threshold, trigger, retrain, breach, exceeds]
+    weight: 40
+  - id: retraining_pipeline
+    kind: aml_asset
+    description: Retraining pipeline reusing the training assets with fresh data
+    role: retraining
+    weight: 35
+  - id: azdo_ct
+    kind: azdo_pipeline
+    description: AzDO continuous-training pipeline wiring drift outcome -> retraining -> registration -> promotion
+    role: continuous training
+    weight: 25
+deliverables:
+  trigger_mechanism: [src/monitoring/evaluate_thresholds.py]
+  retraining_pipeline: [aml/pipelines/retraining_pipeline.yml]
+  azdo_ct: [azdopipelines/ct-retrain.yml]
+validation:
+  - azdo previewRun

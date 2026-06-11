@@ -1,0 +1,22 @@
+$schema: https://azuremlschemas.azureedge.net/latest/pipelineJob.schema.json
+type: pipeline
+display_name: {{ safe_name }}-monitoring
+experiment_name: {{ experiment_name }}
+description: Scheduled drift detection for {{ project_name }}
+
+jobs:
+  detect_drift:
+    type: command
+    command: >-
+      python src/monitoring/detect_drift.py
+      --baseline-data ${{ '{{' }}inputs.baseline_data{{ '}}' }}
+      --current-data ${{ '{{' }}inputs.current_data{{ '}}' }}
+      --output ${{ '{{' }}outputs.drift_report{{ '}}' }}/drift_report.json
+    code: ../../
+    environment: azureml:{{ environment_name }}@latest
+    compute: {{ compute_target }}
+    inputs:
+      baseline_data: { type: uri_file, path: azureml:baseline_data@latest }
+      current_data: { type: uri_file, path: azureml:current_data@latest }
+    outputs:
+      drift_report: { type: uri_folder }

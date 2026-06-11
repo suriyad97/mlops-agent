@@ -1,0 +1,14 @@
+$schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.json
+type: command
+name: train_{{ safe_name | replace('-', '_') }}
+display_name: Train {{ model_name }}
+version: "1"
+inputs:
+  training_data: { type: uri_file }
+outputs:
+  model_output: { type: uri_folder }
+environment: azureml:{{ environment_name }}@latest
+code: ../../src
+command: >-
+  python train.py --data-path ${{ '{{' }}inputs.training_data{{ '}}' }}
+  --output-dir ${{ '{{' }}outputs.model_output{{ '}}' }}

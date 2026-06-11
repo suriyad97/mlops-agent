@@ -1,0 +1,44 @@
+# Model promotion: compare challenger vs champion, promote through QA -> Prod with approvals
+trigger: none
+pool: { vmImage: ubuntu-latest }
+
+parameters:
+  - name: challengerVersion
+    type: string
+
+stages:
+  - stage: Compare
+    jobs:
+      - job: champion_challenger
+        steps:
+          - task: AzureCLI@2
+            displayName: Compare challenger vs champion on {{ metrics | join(', ') if metrics else 'primary metric' }}
+            inputs:
+              azureSubscription: $(SERVICE_CONNECTION_QA)
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                echo "Compare model {{ model_name }}:${{ '{{' }} parameters.challengerVersion {{ '}}' }} against current champion"
+                # evaluation job submission; fail the stage if challenger underperforms
+
+  - stage: PromoteQA
+    dependsOn: Compare
+    jobs:
+      - deployment: qa
+        environment: {{ safe_name }}-qa      # approval-gated
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - script: echo "Tag {{ model_name }}:${{ '{{' }} parameters.challengerVersion {{ '}}' }} stage=qa"
+
+  - stage: PromoteProd
+    dependsOn: PromoteQA
+    jobs:
+      - deployment: prod
+        environment: {{ safe_name }}-prod    # approval-gated
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - script: echo "Tag {{ model_name }}:${{ '{{' }} parameters.challengerVersion {{ '}}' }} stage=prod champion=true"

@@ -1,0 +1,49 @@
+# Continuous training: drift threshold -> retrain -> register -> promote
+trigger: none
+pool: { vmImage: ubuntu-latest }
+
+parameters:
+  - name: driftReportPath
+    type: string
+    default: drift_report.json
+
+stages:
+  - stage: Evaluate
+    jobs:
+      - job: threshold
+        steps:
+          - script: python src/monitoring/evaluate_thresholds.py --drift-report ${{ '{{' }} parameters.driftReportPath {{ '}}' }}
+            displayName: Evaluate drift thresholds
+            name: gate
+
+  - stage: Retrain
+    dependsOn: Evaluate
+    condition: succeeded('Evaluate')
+    jobs:
+      - job: submit
+        steps:
+          - task: AzureCLI@2
+            displayName: Submit retraining pipeline
+            inputs:
+              azureSubscription: $(SERVICE_CONNECTION_DEV)
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                set -e
+                run_id=$(az ml job create --file aml/pipelines/retraining_pipeline.yml \
+                  --resource-group $(RESOURCE_GROUP_DEV) --workspace-name $(WORKSPACE_DEV) \
+                  --query name -o tsv)
+                az ml job stream --name "$run_id" \
+                  --resource-group $(RESOURCE_GROUP_DEV) --workspace-name $(WORKSPACE_DEV)
+
+  - stage: PromoteModel
+    dependsOn: Retrain
+    jobs:
+      - deployment: promote
+        environment: {{ safe_name }}-qa     # approval-gated
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - script: echo "Trigger qa-promote-model pipeline for the newly registered version"
+                  displayName: Hand off to model promotion

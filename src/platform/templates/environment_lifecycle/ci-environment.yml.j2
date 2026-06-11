@@ -1,0 +1,64 @@
+# Environment lifecycle: build -> dev -> validate -> qa -> validate -> prod
+trigger:
+  branches: { include: [{{ default_branch }}] }
+  paths: { include: [Dockerfile, aml/conda.yml, aml/environment.yml, requirements.txt] }
+
+pool: { vmImage: ubuntu-latest }
+
+stages:
+  - stage: BuildAndDev
+    displayName: Build image + Dev environment
+    jobs:
+      - job: dev
+        steps:
+          - task: AzureCLI@2
+            displayName: Create Dev AML environment
+            inputs:
+              azureSubscription: $(SERVICE_CONNECTION_DEV)
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                az ml environment create --file aml/environment.yml \
+                  --resource-group $(RESOURCE_GROUP_DEV) --workspace-name $(WORKSPACE_DEV)
+
+  - stage: PromoteQA
+    displayName: Promote to QA (approval-gated)
+    dependsOn: BuildAndDev
+    jobs:
+      - deployment: qa
+        environment: {{ safe_name }}-qa     # AzDO environment with approval check
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+                - task: AzureCLI@2
+                  displayName: Create QA AML environment
+                  inputs:
+                    azureSubscription: $(SERVICE_CONNECTION_QA)
+                    scriptType: bash
+                    scriptLocation: inlineScript
+                    inlineScript: |
+                      az ml environment create --file aml/environment.yml \
+                        --resource-group $(RESOURCE_GROUP_QA) --workspace-name $(WORKSPACE_QA)
+
+  - stage: PromoteProd
+    displayName: Promote to Prod (approval-gated)
+    dependsOn: PromoteQA
+    jobs:
+      - deployment: prod
+        environment: {{ safe_name }}-prod   # AzDO environment with approval check
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+                - task: AzureCLI@2
+                  displayName: Create Prod AML environment
+                  inputs:
+                    azureSubscription: $(SERVICE_CONNECTION_PROD)
+                    scriptType: bash
+                    scriptLocation: inlineScript
+                    inlineScript: |
+                      az ml environment create --file aml/environment.yml \
+                        --resource-group $(RESOURCE_GROUP_PROD) --workspace-name $(WORKSPACE_PROD)

@@ -1,0 +1,19 @@
+# Rollback Runbook — {{ project_name }}
+
+Validation gates and procedure for safely reverting to a known-good state.
+
+## Endpoint rollback
+1. Identify the previous healthy deployment: `az ml online-endpoint show --name {{ endpoint_name }}`
+2. Run pipeline `ops-rollback.yml` with `previousDeployment=<name>` — Prod approval gate applies.
+3. Validate: smoke-test the endpoint, then confirm traffic split is 100% on the reverted deployment.
+
+## Model rollback
+1. List versions: `az ml model list --name {{ model_name }}`
+2. Run `ops-rollback.yml` with `modelVersion=<previous>` to re-tag champion, then redeploy via the CD pipeline.
+
+## Environment rollback
+- AML environments are versioned; pin the previous version in deployment YAML and redeploy.
+
+## Pipeline rollback
+- Revert the offending commit on {{ default_branch }} (`git revert`), let CI validate, then redeploy.
+- Gates: every promotion stage uses AzDO environment approvals ({{ safe_name }}-qa / {{ safe_name }}-prod).

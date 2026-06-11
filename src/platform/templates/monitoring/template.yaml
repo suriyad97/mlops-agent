@@ -1,0 +1,11 @@
+capability: monitoring
+components:
+  drift_detection_code:
+    files:
+      - { src: detect_drift.py.j2, dest: src/monitoring/detect_drift.py }
+  monitoring_aml_pipeline:
+    files:
+      - { src: monitoring_pipeline.yml.j2, dest: aml/pipelines/monitoring_pipeline.yml }
+  azdo_monitoring:
+    files:
+      - { src: cm-monitoring.yml.j2, dest: azdopipelines/cm-monitoring.yml }

@@ -1,0 +1,17 @@
+$schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.json
+type: command
+name: register_model
+display_name: Register {{ model_name }}
+version: "1"
+inputs:
+  model_path: { type: uri_folder }
+  model_name: { type: string, default: {{ model_name }} }
+outputs:
+  registration: { type: uri_file }
+environment: azureml:{{ environment_name }}@latest
+command: >-
+  python -c "
+  import mlflow, sys;
+  mlflow.register_model('file://' + '${{ '{{' }}inputs.model_path{{ '}}' }}', '${{ '{{' }}inputs.model_name{{ '}}' }}')
+  "
+code: ../../src

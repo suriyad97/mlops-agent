@@ -1,0 +1,12 @@
+FROM mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu22.04:latest
+
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY src/ src/
+
+RUN useradd --create-home appuser
+USER appuser
+
+CMD ["python", "-c", "print('{{ project_name }} environment ready')"]

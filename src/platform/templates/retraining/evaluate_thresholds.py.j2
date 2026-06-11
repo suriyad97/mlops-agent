@@ -1,0 +1,27 @@
+"""Decide whether drift severity warrants retraining for {{ project_name }}."""
+import argparse
+import json
+import sys
+from pathlib import Path
+
+RETRAIN_PSI_THRESHOLD = 0.25
+RETRAIN_FEATURE_COUNT = 2
+
+
+def should_retrain(drift_report_path: str) -> bool:
+    report = json.loads(Path(drift_report_path).read_text())
+    alerts = report.get("alerts", [])
+    severe = [a for a in alerts if a.get("psi", 0) > RETRAIN_PSI_THRESHOLD]
+    return len(severe) >= RETRAIN_FEATURE_COUNT or any(
+        a.get("psi", 0) > 2 * RETRAIN_PSI_THRESHOLD for a in alerts
+    )
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--drift-report", required=True)
+    args = parser.parse_args()
+    retrain = should_retrain(args.drift_report)
+    print(json.dumps({"retrain": retrain}))
+    # exit code consumed by the CT pipeline condition
+    sys.exit(0 if retrain else 1)

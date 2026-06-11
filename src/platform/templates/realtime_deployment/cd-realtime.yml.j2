@@ -1,0 +1,46 @@
+# CD: blue/green deployment of the online endpoint (approval-gated for prod)
+trigger: none
+pool: { vmImage: ubuntu-latest }
+
+stages:
+  - stage: DeployDev
+    jobs:
+      - job: dev
+        steps:
+          - task: AzureCLI@2
+            displayName: Deploy online endpoint (dev)
+            inputs:
+              azureSubscription: $(SERVICE_CONNECTION_DEV)
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                set -e
+                az ml online-endpoint create --file aml/deployment/endpoint.yml \
+                  --resource-group $(RESOURCE_GROUP_DEV) --workspace-name $(WORKSPACE_DEV) || true
+                az ml online-deployment create --file aml/deployment/deployment.yml \
+                  --resource-group $(RESOURCE_GROUP_DEV) --workspace-name $(WORKSPACE_DEV) \
+                  --all-traffic
+
+  - stage: DeployProd
+    dependsOn: DeployDev
+    jobs:
+      - deployment: prod
+        environment: {{ safe_name }}-prod    # approval-gated
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+                - task: AzureCLI@2
+                  displayName: Blue/green deploy (prod)
+                  inputs:
+                    azureSubscription: $(SERVICE_CONNECTION_PROD)
+                    scriptType: bash
+                    scriptLocation: inlineScript
+                    inlineScript: |
+                      set -e
+                      az ml online-endpoint create --file aml/deployment/endpoint.yml \
+                        --resource-group $(RESOURCE_GROUP_PROD) --workspace-name $(WORKSPACE_PROD) || true
+                      az ml online-deployment create --file aml/deployment/deployment.yml \
+                        --resource-group $(RESOURCE_GROUP_PROD) --workspace-name $(WORKSPACE_PROD)
+                      # shift traffic only after smoke test; previous deployment kept for ops-rollback

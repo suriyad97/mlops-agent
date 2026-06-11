@@ -1,0 +1,27 @@
+capability: batch_deployment
+purpose: Score data in bulk on a schedule or trigger via a batch endpoint
+depends_on: [model_lifecycle, environment_lifecycle]
+enables: [monitoring]
+evidence:
+  - id: batch_endpoint_assets
+    kind: aml_asset
+    description: AML batch endpoint + batch deployment definitions
+    role: batch endpoint / deployment
+    weight: 40
+  - id: inference_code
+    kind: code_semantic
+    description: Batch inference/scoring code consuming the registered model
+    indicators: [batch, inference, predict, score, scoring]
+    weight: 30
+  - id: azdo_cd_batch
+    kind: azdo_pipeline
+    description: AzDO CD pipeline that deploys the batch endpoint and runs/schedules batch scoring
+    role: batch deployment CD
+    weight: 30
+deliverables:
+  batch_endpoint_assets: [aml/deployment/batch_endpoint.yml, aml/deployment/batch_deployment.yml]
+  inference_code: [src/batch_score.py]
+  azdo_cd_batch: [azdopipelines/cd-batch.yml]
+validation:
+  - local az ml batch-endpoint create (dev)
+  - azdo previewRun

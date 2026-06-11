@@ -1,0 +1,33 @@
+"""Train {{ model_name }} ({{ project_type }})."""
+import argparse
+from pathlib import Path
+
+import mlflow
+import pandas as pd
+
+
+def train(data_path: str, output_dir: str) -> None:
+    df = pd.read_csv(data_path)
+    target = "{{ target_variable or 'target' }}"
+    X, y = df.drop(columns=[target]), df[target]
+
+    {% if project_type in ("binary_classification", "multiclass_classification") -%}
+    from sklearn.linear_model import LogisticRegression
+    model = LogisticRegression(max_iter=1000)
+    {%- else -%}
+    from sklearn.linear_model import LinearRegression
+    model = LinearRegression()
+    {%- endif %}
+
+    mlflow.autolog()
+    model.fit(X, y)
+    Path(output_dir).mkdir(parents=True, exist_ok=True)
+    mlflow.sklearn.save_model(model, output_dir)
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--data-path", required=True)
+    parser.add_argument("--output-dir", default="outputs/model")
+    args = parser.parse_args()
+    train(args.data_path, args.output_dir)

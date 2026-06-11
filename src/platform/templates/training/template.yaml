@@ -1,0 +1,13 @@
+capability: training
+components:
+  code_functions:
+    files:
+      - { src: train.py.j2, dest: src/train.py }
+      - { src: evaluate.py.j2, dest: src/evaluate.py }
+  aml_training_assets:
+    files:
+      - { src: train_component.yml.j2, dest: aml/components/train.yml }
+      - { src: training_pipeline.yml.j2, dest: aml/pipelines/training_pipeline.yml }
+  azdo_orchestration:
+    files:
+      - { src: ct-train.yml.j2, dest: azdopipelines/ct-train.yml }

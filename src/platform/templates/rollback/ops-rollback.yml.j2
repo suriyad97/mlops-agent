@@ -1,0 +1,47 @@
+# Endpoint rollback: shift traffic back to the previous deployment (blue/green revert)
+trigger: none
+pool: { vmImage: ubuntu-latest }
+
+parameters:
+  - name: endpointName
+    type: string
+    default: {{ endpoint_name }}
+  - name: previousDeployment
+    type: string
+  - name: modelVersion
+    type: string
+    default: ""
+
+stages:
+  - stage: Rollback
+    jobs:
+      - deployment: revert
+        environment: {{ safe_name }}-prod    # approval-gated
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+                - task: AzureCLI@2
+                  displayName: Shift traffic to previous deployment
+                  inputs:
+                    azureSubscription: $(SERVICE_CONNECTION_PROD)
+                    scriptType: bash
+                    scriptLocation: inlineScript
+                    inlineScript: |
+                      set -e
+                      az ml online-endpoint update --name ${{ '{{' }} parameters.endpointName {{ '}}' }} \
+                        --traffic "${{ '{{' }} parameters.previousDeployment {{ '}}' }}=100" \
+                        --resource-group $(RESOURCE_GROUP_PROD) --workspace-name $(WORKSPACE_PROD)
+                - task: AzureCLI@2
+                  displayName: Re-tag champion model (optional)
+                  condition: ne('${{ '{{' }} parameters.modelVersion {{ '}}' }}', '')
+                  inputs:
+                    azureSubscription: $(SERVICE_CONNECTION_PROD)
+                    scriptType: bash
+                    scriptLocation: inlineScript
+                    inlineScript: |
+                      python src/rollback/rollback_model.py \
+                        --subscription $(AZURE_SUBSCRIPTION_ID) \
+                        --resource-group $(RESOURCE_GROUP_PROD) --workspace $(WORKSPACE_PROD) \
+                        --target-version ${{ '{{' }} parameters.modelVersion {{ '}}' }}

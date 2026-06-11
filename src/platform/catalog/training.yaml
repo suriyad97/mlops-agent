@@ -1,0 +1,27 @@
+capability: training
+purpose: Produce a trained, evaluated model artifact from data
+depends_on: [environment_lifecycle]
+enables: [model_lifecycle, retraining]
+evidence:
+  - id: code_functions
+    kind: code_semantic
+    description: Data loading, feature engineering, model training, and model evaluation implemented in code (any naming convention)
+    indicators: [fit, train, read_csv, load, feature, transform, evaluate, accuracy, score, metric]
+    weight: 30
+  - id: aml_training_assets
+    kind: aml_asset
+    description: AML command components and/or pipeline job that execute the training code
+    role: training pipeline / components
+    weight: 40
+  - id: azdo_orchestration
+    kind: azdo_pipeline
+    description: AzDO pipeline that submits the AML training pipeline (training that cannot be triggered by CI/CD is incomplete)
+    role: submits training
+    weight: 30
+deliverables:
+  code_functions: [src/train.py, src/evaluate.py]
+  aml_training_assets: [aml/components/train.yml, aml/components/evaluate.yml, aml/pipelines/training_pipeline.yml]
+  azdo_orchestration: [azdopipelines/ct-train.yml]
+validation:
+  - local az ml job create (training pipeline, dev)
+  - azdo previewRun

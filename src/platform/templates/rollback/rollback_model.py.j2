@@ -1,0 +1,31 @@
+"""Re-promote a previous model version of {{ model_name }} (model rollback)."""
+import argparse
+
+from azure.ai.ml import MLClient
+from azure.identity import DefaultAzureCredential
+
+
+def rollback(subscription: str, resource_group: str, workspace: str,
+             model_name: str, target_version: str) -> None:
+    client = MLClient(DefaultAzureCredential(), subscription, resource_group, workspace)
+    model = client.models.get(name=model_name, version=target_version)
+    # tag the chosen version as champion; deployment pipelines resolve by this tag
+    model.tags = {**(model.tags or {}), "champion": "true", "rollback": "true"}
+    client.models.create_or_update(model)
+    for version in client.models.list(name=model_name):
+        if version.version != target_version and (version.tags or {}).get("champion"):
+            version.tags.pop("champion", None)
+            client.models.create_or_update(version)
+    print(f"{model_name}:{target_version} is champion again — redeploy via cd pipeline")
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--subscription", required=True)
+    parser.add_argument("--resource-group", required=True)
+    parser.add_argument("--workspace", required=True)
+    parser.add_argument("--model-name", default="{{ model_name }}")
+    parser.add_argument("--target-version", required=True)
+    args = parser.parse_args()
+    rollback(args.subscription, args.resource_group, args.workspace,
+             args.model_name, args.target_version)

@@ -1,0 +1,10 @@
+$schema: https://azuremlschemas.azureedge.net/latest/managedOnlineDeployment.schema.json
+name: blue
+endpoint_name: {{ endpoint_name }}
+model: azureml:{{ model_name }}@latest
+environment: azureml:{{ environment_name }}@latest
+code_configuration:
+  code: ../../src
+  scoring_script: score.py
+instance_type: Standard_DS2_v2
+instance_count: 1

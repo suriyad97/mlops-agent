@@ -1,0 +1,26 @@
+capability: rollback
+purpose: Safely revert model, endpoint, environment, or pipeline to a previous known-good state
+depends_on: [model_lifecycle]
+enables: []
+evidence:
+  - id: model_rollback
+    kind: code_semantic
+    description: Mechanism to re-promote a previous model version (registry version pinning / champion fallback)
+    indicators: [rollback, previous version, revert, fallback, champion]
+    weight: 40
+  - id: endpoint_rollback
+    kind: azdo_pipeline
+    description: Pipeline path to shift traffic back / redeploy prior deployment (blue-green revert)
+    role: endpoint rollback
+    weight: 35
+  - id: pipeline_rollback
+    kind: azdo_pipeline
+    description: Validation gates allowing safe redeploy of a previous pipeline state
+    role: pipeline rollback gates
+    weight: 25
+deliverables:
+  model_rollback: [src/rollback/rollback_model.py]
+  endpoint_rollback: [azdopipelines/ops-rollback.yml]
+  pipeline_rollback: [.azuredevops/rollback-runbook.md]
+validation:
+  - azdo previewRun

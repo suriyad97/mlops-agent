@@ -1,0 +1,42 @@
+# ---- secrets / credentials (NEVER commit) ----
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# ---- local app state / data ----
+platform.db
+platform.db-*
+.agent_memory/
+.graphs/
+test-output.xml
+
+# ---- local tooling config ----
+.claude/
+
+# ---- python ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+env/
+*.log
+
+# ---- node / web ----
+web/node_modules/
+web/dist/
+node_modules/
+dist/
+*.local
+
+# ---- OS / editor ----
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/

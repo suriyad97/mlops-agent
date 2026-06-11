@@ -1,0 +1,11 @@
+capability: rollback
+components:
+  model_rollback:
+    files:
+      - { src: rollback_model.py.j2, dest: src/rollback/rollback_model.py }
+  endpoint_rollback:
+    files:
+      - { src: ops-rollback.yml.j2, dest: azdopipelines/ops-rollback.yml }
+  pipeline_rollback:
+    files:
+      - { src: rollback-runbook.md.j2, dest: .azuredevops/rollback-runbook.md }

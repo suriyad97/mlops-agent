@@ -1,0 +1,27 @@
+capability: monitoring
+purpose: Detect data drift, prediction drift, and concept drift in production; alert on threshold breaches
+depends_on: [batch_deployment, realtime_deployment]
+enables: [retraining]
+evidence:
+  - id: drift_detection_code
+    kind: code_semantic
+    description: Drift computation code. Concept drift REQUIRES ground-truth labels post-deployment — only count it when labels are available
+    indicators: [drift, psi, kolmogorov, wasserstein, jensen, concept, baseline, distribution]
+    weight: 35
+  - id: monitoring_aml_pipeline
+    kind: aml_asset
+    description: AML pipeline/job that runs the drift computation on a schedule
+    role: monitoring pipeline
+    weight: 35
+  - id: azdo_monitoring
+    kind: azdo_pipeline
+    description: AzDO pipeline that schedules/submits monitoring runs and routes alerts
+    role: monitoring orchestration
+    weight: 30
+deliverables:
+  drift_detection_code: [src/monitoring/detect_drift.py]
+  monitoring_aml_pipeline: [aml/pipelines/monitoring_pipeline.yml]
+  azdo_monitoring: [azdopipelines/cm-monitoring.yml]
+validation:
+  - local az ml job create (monitoring pipeline, dev)
+  - azdo previewRun

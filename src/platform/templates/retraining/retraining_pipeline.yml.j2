@@ -1,0 +1,16 @@
+$schema: https://azuremlschemas.azureedge.net/latest/pipelineJob.schema.json
+type: pipeline
+display_name: {{ safe_name }}-retraining
+experiment_name: {{ experiment_name }}
+description: Retraining triggered by drift for {{ project_name }} — reuses training assets with fresh data
+
+inputs:
+  training_data: { type: uri_file, path: azureml:current_data@latest }
+
+jobs:
+  retrain:
+    type: command
+    component: ../components/train.yml
+    inputs:
+      training_data: ${{ '{{' }}parent.inputs.training_data{{ '}}' }}
+    compute: {{ compute_target }}

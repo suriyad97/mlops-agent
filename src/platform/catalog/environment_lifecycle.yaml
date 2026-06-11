@@ -1,0 +1,28 @@
+capability: environment_lifecycle
+purpose: Reproducible execution environments built, registered, validated, and promoted dev -> qa -> prod
+depends_on: []
+enables: [training, batch_deployment, realtime_deployment, monitoring, retraining]
+evidence:
+  - id: container_definition
+    kind: code_semantic
+    description: Container/conda definition for the runtime (Dockerfile, conda/env spec)
+    indicators: [dockerfile, conda, environment, "image:", requirements]
+    weight: 25
+  - id: aml_environment
+    kind: aml_asset
+    description: Azure ML environment asset registered from the container/conda definition
+    role: environment
+    weight: 35
+  - id: azdo_env_pipeline
+    kind: azdo_pipeline
+    description: AzDO pipeline that builds the image, pushes to ACR, creates the AML environment, and promotes dev->qa->prod with validation between stages
+    role: builds and promotes environments
+    weight: 40
+deliverables:
+  container_definition: [Dockerfile, aml/conda.yml]
+  aml_environment: [aml/environment.yml]
+  azdo_env_pipeline: [azdopipelines/ci-environment.yml]
+validation:
+  - static yaml/schema checks
+  - local az ml environment create (dev)
+  - azdo previewRun

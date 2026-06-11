@@ -1,0 +1,13 @@
+# AzDO Environments & Approval Gates — {{ project_name }}
+
+Create these AzDO Environments (Project Settings → Environments), each with an
+Approvals check so QA/Prod promotions require human sign-off:
+
+| Environment | Approvers | Used by |
+|---|---|---|
+| {{ safe_name }}-qa | ML lead | qa-promote-model, ci-environment, ct-retrain |
+| {{ safe_name }}-prod | ML lead + platform owner | qa-promote-model, ci-environment, cd pipelines, ops-rollback |
+
+Every deployment job in the pipelines references these environments, so the
+approval gate applies inside Azure DevOps itself — in addition to the
+platform's chat-level approval before any pipeline is triggered.

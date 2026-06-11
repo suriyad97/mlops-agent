@@ -1,0 +1,46 @@
+@import "tailwindcss";
+
+/* markdown rendering inside assistant bubbles */
+.md-body table {
+  width: 100%;
+  text-align: left;
+  border-collapse: collapse;
+  margin: 0.5rem 0;
+  font-size: 0.85rem;
+}
+.md-body th {
+  border-bottom: 1px solid #52525b;
+  padding: 0.25rem 0.5rem;
+  font-weight: 600;
+  color: #d4d4d8;
+}
+.md-body td {
+  border-bottom: 1px solid rgba(63, 63, 70, 0.6);
+  padding: 0.25rem 0.5rem;
+}
+.md-body code {
+  background: rgba(63, 63, 70, 0.7);
+  border-radius: 4px;
+  padding: 0.1rem 0.3rem;
+  font-size: 13px;
+}
+.md-body pre {
+  background: #18181b;
+  border-radius: 8px;
+  padding: 0.75rem;
+  overflow-x: auto;
+  margin: 0.5rem 0;
+  font-size: 13px;
+}
+.md-body pre code {
+  background: transparent;
+  padding: 0;
+}
+.md-body p { margin: 0.4rem 0; }
+.md-body ul { list-style: disc; margin: 0.4rem 0 0.4rem 1.25rem; }
+.md-body ol { list-style: decimal; margin: 0.4rem 0 0.4rem 1.25rem; }
+.md-body a { color: #38bdf8; text-decoration: underline; }
+.md-body h1, .md-body h2, .md-body h3 {
+  font-weight: 600;
+  margin: 0.75rem 0 0.4rem;
+}

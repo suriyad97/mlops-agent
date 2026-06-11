@@ -1,0 +1,14 @@
+$schema: https://azuremlschemas.azureedge.net/latest/modelBatchDeployment.schema.json
+name: default
+endpoint_name: {{ safe_name }}-batch
+model: azureml:{{ model_name }}@latest
+environment: azureml:{{ environment_name }}@latest
+code_configuration:
+  code: ../../src
+  scoring_script: batch_score.py
+compute: azureml:{{ compute_target if compute_target != 'serverless' else 'cpu-cluster' }}
+resources: { instance_count: 1 }
+max_concurrency_per_instance: 2
+mini_batch_size: 10
+output_action: append_row
+output_file_name: predictions.csv

@@ -1,0 +1,27 @@
+capability: realtime_deployment
+purpose: Serve online predictions via a managed real-time endpoint
+depends_on: [model_lifecycle, environment_lifecycle]
+enables: [monitoring]
+evidence:
+  - id: online_endpoint_assets
+    kind: aml_asset
+    description: AML managed online endpoint + online deployment definitions
+    role: online endpoint / deployment
+    weight: 40
+  - id: scoring_code
+    kind: code_semantic
+    description: Scoring script (init/run pattern) or serving app that loads the model and answers requests
+    indicators: [init, run, scoring, score.py, fastapi, request, predict]
+    weight: 30
+  - id: azdo_cd_realtime
+    kind: azdo_pipeline
+    description: AzDO CD pipeline that deploys the online endpoint with blue/green or canary rollout
+    role: realtime deployment CD
+    weight: 30
+deliverables:
+  online_endpoint_assets: [aml/deployment/endpoint.yml, aml/deployment/deployment.yml]
+  scoring_code: [src/score.py]
+  azdo_cd_realtime: [azdopipelines/cd-realtime.yml]
+validation:
+  - local az ml online-endpoint create (dev)
+  - azdo previewRun

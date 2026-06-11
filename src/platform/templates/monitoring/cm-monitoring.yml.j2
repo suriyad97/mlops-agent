@@ -1,0 +1,31 @@
+# Continuous monitoring: scheduled drift detection + alert routing
+schedules:
+  - cron: "0 6 * * *"
+    displayName: Daily drift check
+    branches: { include: [{{ default_branch }}] }
+    always: true
+
+trigger: none
+pool: { vmImage: ubuntu-latest }
+
+stages:
+  - stage: Monitor
+    jobs:
+      - job: drift
+        steps:
+          - task: AzureCLI@2
+            displayName: Submit monitoring pipeline
+            inputs:
+              azureSubscription: $(SERVICE_CONNECTION_PROD)
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                set -e
+                run_id=$(az ml job create --file aml/pipelines/monitoring_pipeline.yml \
+                  --resource-group $(RESOURCE_GROUP_PROD) --workspace-name $(WORKSPACE_PROD) \
+                  --query name -o tsv)
+                az ml job stream --name "$run_id" \
+                  --resource-group $(RESOURCE_GROUP_PROD) --workspace-name $(WORKSPACE_PROD)
+          - script: |
+              echo "##vso[task.logissue type=warning]Review drift report; alerts route to the retraining pipeline (ct-retrain)."
+            displayName: Alert routing note

@@ -1,0 +1,11 @@
+name: {{ safe_name }}-env
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - pip
+  - pip:
+      - scikit-learn
+      - pandas
+      - mlflow
+      - azureml-mlflow

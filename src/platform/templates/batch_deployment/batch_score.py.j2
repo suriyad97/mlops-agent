@@ -1,0 +1,25 @@
+"""Batch scoring entry for {{ model_name }} (AML batch deployment contract)."""
+import os
+from pathlib import Path
+from typing import List
+
+import mlflow
+import pandas as pd
+
+model = None
+
+
+def init() -> None:
+    global model
+    model_dir = Path(os.environ["AZUREML_MODEL_DIR"])
+    candidates = list(model_dir.rglob("MLmodel"))
+    model = mlflow.pyfunc.load_model(str(candidates[0].parent) if candidates else str(model_dir))
+
+
+def run(mini_batch: List[str]) -> pd.DataFrame:
+    frames = []
+    for file_path in mini_batch:
+        df = pd.read_csv(file_path)
+        df["prediction"] = model.predict(df)
+        frames.append(df)
+    return pd.concat(frames)

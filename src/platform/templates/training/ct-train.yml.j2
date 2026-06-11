@@ -1,0 +1,25 @@
+# Continuous training: submit the AML training pipeline from AzDO
+trigger:
+  branches: { include: [{{ default_branch }}] }
+  paths: { include: [src/*, aml/components/*, aml/pipelines/training_pipeline.yml] }
+
+pool: { vmImage: ubuntu-latest }
+
+stages:
+  - stage: Train
+    jobs:
+      - job: submit
+        steps:
+          - task: AzureCLI@2
+            displayName: Submit AML training pipeline
+            inputs:
+              azureSubscription: $(SERVICE_CONNECTION_DEV)
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                set -e
+                run_id=$(az ml job create --file aml/pipelines/training_pipeline.yml \
+                  --resource-group $(RESOURCE_GROUP_DEV) --workspace-name $(WORKSPACE_DEV) \
+                  --query name -o tsv)
+                az ml job stream --name "$run_id" \
+                  --resource-group $(RESOURCE_GROUP_DEV) --workspace-name $(WORKSPACE_DEV)

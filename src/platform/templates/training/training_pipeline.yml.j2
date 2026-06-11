@@ -1,0 +1,15 @@
+$schema: https://azuremlschemas.azureedge.net/latest/pipelineJob.schema.json
+type: pipeline
+display_name: {{ safe_name }}-training
+experiment_name: {{ experiment_name }}
+
+inputs:
+  training_data: { type: uri_file, path: azureml:training_data@latest }
+
+jobs:
+  train:
+    type: command
+    component: ../components/train.yml
+    inputs:
+      training_data: ${{ '{{' }}parent.inputs.training_data{{ '}}' }}
+    compute: {{ compute_target }}

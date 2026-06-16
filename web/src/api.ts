@@ -1,3 +1,96 @@
+export type PrereqItem = {
+  name: string
+  status: 'ok' | 'missing_config' | 'not_found' | 'error'
+  detail: string
+  required_for: string
+  fix: string
+}
+
+export type InfraReport = {
+  checks: PrereqItem[]
+  all_ok: boolean
+}
+
+export type DiscoveredConfig = {
+  subscription_id: string
+  resource_group: string
+  acr_name: string
+  aml_workspace: string
+  aml_compute_target: string
+  discovered: string[]   // profile key names that were auto-discovered
+  errors: string[]       // non-fatal errors during discovery
+}
+
+export type DiscoverResult = {
+  discovered: DiscoveredConfig
+  report: InfraReport
+}
+
+export type ContractStage = {
+  stage: string
+  display_name: string
+  standard_path: string
+  capability: string
+  present: boolean
+  detected_path: string
+  detected_symbol: string
+  meets_contract: boolean
+  mode: 'wired' | 'adapter' | 'scaffold'
+  note: string
+}
+
+export type ContractManifest = {
+  stages: ContractStage[]
+  has_eda: boolean
+  has_shap: boolean
+  has_feature_engineering: boolean
+}
+
+export type ContractResult = {
+  endpoint_strategy: string
+  contract: ContractManifest
+}
+
+export type GeneratedComponent = {
+  capability: string
+  component: string
+  files: string[]
+  adapted: boolean
+  note: string
+}
+
+export type GenerationReport = {
+  generated?: boolean
+  components: GeneratedComponent[]
+  written_files: string[]
+  created_files?: string[]
+  updated_files?: string[]
+  adapter_files: string[]
+  scaffold_files: string[]
+  wired_skipped: string[]
+  superseded_files: string[]
+  summary: string
+}
+
+export type RequirementItem = {
+  order: number
+  requirement: string
+  owner: 'data_scientist' | 'platform' | 'infra'
+  status: 'present' | 'adapter' | 'scaffold' | 'exists' | 'will_generate' | 'prerequisite' | 'user_action'
+  deliverables: string[]
+  detail: string
+}
+
+export type RequirementPlan = {
+  endpoint_strategy: string
+  items: RequirementItem[]
+}
+
+export type RequirementPlanResult = {
+  plan: RequirementPlan
+  markdown: string
+}
+
 export type Project = {
   id: string
   name: string
@@ -44,6 +137,21 @@ export const api = {
     request<{ profile: Record<string, unknown> }>(`/api/projects/${id}/scan`, { method: 'POST', body: JSON.stringify({ local_path, branch }) }),
   patchProfile: (id: string, profile: Record<string, unknown>) =>
     request<Project>(`/api/projects/${id}/profile`, { method: 'PATCH', body: JSON.stringify({ profile }) }),
+  getRequirementPlan: (id: string) => request<RequirementPlanResult>(`/api/projects/${id}/requirement-plan`),
+  getContract: (id: string) => request<ContractResult>(`/api/projects/${id}/contract`),
+  saveContract: (id: string, contract: ContractManifest) =>
+    request<{ saved: boolean; contract: ContractManifest }>(
+      `/api/projects/${id}/contract`, { method: 'PUT', body: JSON.stringify({ contract }) }),
+  checkProjectInfra: (id: string) => request<InfraReport>(`/api/projects/${id}/infra-check`),
+  verifyDataPaths: (id: string) => request<InfraReport>(`/api/projects/${id}/verify-data-paths`),
+  discoverProjectInfra: (id: string) => request<DiscoverResult>(`/api/projects/${id}/infra-discover`, { method: 'POST' }),
+  generateProject: (id: string) =>
+    request<GenerationReport>(`/api/projects/${id}/generate`, { method: 'POST', body: JSON.stringify({}) }),
+  getGenerationReport: (id: string) =>
+    request<GenerationReport>(`/api/projects/${id}/generation-report`),
+  validateProject: (id: string) => request<Record<string, unknown>>(`/api/projects/${id}/validate`, { method: 'POST' }),
+  commitProject: (id: string, message: string) =>
+    request<Record<string, unknown>>(`/api/projects/${id}/commit`, { method: 'POST', body: JSON.stringify({ message }) }),
   getReports: (id: string, kind?: string) =>
     request<{ kind: string; payload: Record<string, unknown> }[]>(
       `/api/projects/${id}/reports${kind ? `?kind=${kind}` : ''}`,

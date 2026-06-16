@@ -20,7 +20,7 @@ evidence:
     weight: 30
 deliverables:
   code_functions: [src/train.py, src/evaluate.py]
-  aml_training_assets: [aml/components/train.yml, aml/components/evaluate.yml, aml/pipelines/training_pipeline.yml]
+  aml_training_assets: [MLpipelines/train.yml, MLpipelines/evaluate.yml, MLpipelines/training_pipeline.yml]
   azdo_orchestration: [azdopipelines/ct-train.yml]
 validation:
   - local az ml job create (training pipeline, dev)

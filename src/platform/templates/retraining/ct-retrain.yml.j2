@@ -12,7 +12,7 @@ stages:
     jobs:
       - job: threshold
         steps:
-          - script: python src/monitoring/evaluate_thresholds.py --drift-report ${{ '{{' }} parameters.driftReportPath {{ '}}' }}
+          - script: python {{ evaluate_thresholds_script }} --drift-report ${{ '{{' }} parameters.driftReportPath {{ '}}' }}
             displayName: Evaluate drift thresholds
             name: gate
 
@@ -30,7 +30,7 @@ stages:
               scriptLocation: inlineScript
               inlineScript: |
                 set -e
-                run_id=$(az ml job create --file aml/pipelines/retraining_pipeline.yml \
+                run_id=$(az ml job create --file MLpipelines/retraining_pipeline.yml \
                   --resource-group $(RESOURCE_GROUP_DEV) --workspace-name $(WORKSPACE_DEV) \
                   --query name -o tsv)
                 az ml job stream --name "$run_id" \

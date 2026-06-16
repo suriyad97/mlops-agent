@@ -19,6 +19,27 @@ PARAMS = {
     "project_type": "binary_classification",
     "target_variable": "Survived",
     "metrics": ["accuracy", "f1"],
+    "acr_name": "myacr",
+    "train_script": "src/train.py",
+    "evaluate_script": "src/evaluate.py",
+    "score_script": "src/score.py",
+    "batch_score_script": "src/batch_score.py",
+    "drift_script": "src/monitoring/detect_drift.py",
+    "evaluate_thresholds_script": "src/monitoring/evaluate_thresholds.py",
+    # tunable pipeline parameters
+    "optuna_trials": 20,
+    "drift_threshold": 0.2,
+    "retrain_threshold": 0.25,
+    "monitoring_cron": "0 6 * * *",
+    "instance_type": "Standard_DS2_v2",
+    "instance_count": 1,
+    # data-plane paths (empty → fall back to registered data assets)
+    "training_data_path": "",
+    "eval_data_path": "",
+    "batch_input_path": "",
+    "batch_output_path": "",
+    "baseline_data_path": "",
+    "current_data_path": "",
 }
 
 
@@ -60,6 +81,21 @@ def test_generate_writes_to_working_tree(tmp_path):
     assert (tmp_path / "src" / "monitoring" / "detect_drift.py").exists()
     assert (tmp_path / ".azuredevops" / "rollback-runbook.md").exists()
     assert "NOT committed" in report.summary
+
+
+def test_validators_reject_non_string_content():
+    """Regression: the LLM adaptation pass can return parsed YAML (a dict) instead of
+    YAML text. That must be rejected cleanly, never raise 'dict' object has no
+    attribute 'read' from PyYAML and crash generation."""
+    from src.tools.validation_tools import validate_yaml
+    from src.platform.generation.engine import _validate_files
+
+    ok, msg = validate_yaml({"parsed": "yaml"})
+    assert ok is False and "YAML text" in msg
+    ok, _ = validate_yaml("a: 1")
+    assert ok is True
+    assert "non-string" in _validate_files({"x.yml": {"a": 1}})
+    assert _validate_files({"x.yml": "a: 1"}) == ""
 
 
 def test_generate_handles_unknown_component(tmp_path):

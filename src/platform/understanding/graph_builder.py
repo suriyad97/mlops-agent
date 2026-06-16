@@ -115,13 +115,42 @@ def _resolve_calls(graph: nx.DiGraph) -> None:
 _AML_SCHEMA_HINTS = ("azureml", "commandComponent", "pipelineJob", "environment.schema",
                      "managedOnlineEndpoint", "managedOnlineDeployment", "batchEndpoint")
 
+# AML YAML `type:` values (used when $schema is absent)
+_AML_TYPE_VALUES = frozenset({
+    "command", "pipeline", "mltable", "mlmodel", "sweep", "automl",
+    "managed_online_endpoint", "batch_endpoint",
+    "managed_online_deployment", "batch_deployment",
+})
+
+# Folder prefixes that strongly imply role regardless of YAML content.
+# MLpipelines/ holds all AML pipeline/endpoint/component YAMLs.
+# azdopipelines/ holds all Azure DevOps CI/CT/CD YAML pipelines.
+_AML_PATH_HINTS    = ("aml/", "aml\\", "mlpipelines/", "mlpipelines\\")
+_AZDO_PATH_HINTS   = ("azdopipelines/", "azdopipelines\\", ".azuredevops/", ".azuredevops\\")
+
 
 def _yaml_role(rel: str, doc: dict, raw: str) -> str:
+    rel_lower = rel.replace("\\", "/").lower()
     schema = str(doc.get("$schema", "")) if isinstance(doc, dict) else ""
+
+    # 1. Schema / content hints (highest confidence)
     if any(h in schema or h in raw[:2000] for h in _AML_SCHEMA_HINTS):
         return "aml_asset"
+
+    # 2. YAML `type:` field (AML pipelines often omit $schema)
+    if isinstance(doc, dict) and str(doc.get("type", "")).lower() in _AML_TYPE_VALUES:
+        return "aml_asset"
+
+    # 3. AzDO top-level structure keys
     if isinstance(doc, dict) and any(k in doc for k in ("trigger", "stages", "jobs", "steps", "pr", "pool")):
         return "azdo_pipeline"
+
+    # 4. Path-based fallback — folder tells us the role even without perfect YAML
+    if any(rel_lower.startswith(h) or f"/{h.rstrip('/')}" in rel_lower for h in _AML_PATH_HINTS):
+        return "aml_asset"
+    if any(rel_lower.startswith(h) or f"/{h.rstrip('/')}" in rel_lower for h in _AZDO_PATH_HINTS):
+        return "azdo_pipeline"
+
     if "workflows" in rel and rel.startswith(".github"):
         return "github_workflow"
     return "config"

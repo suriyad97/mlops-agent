@@ -4,7 +4,12 @@ The LLM judges WHETHER collected evidence truly realizes each capability
 component (semantics). The arithmetic — weights, scores, statuses, gap
 ordering — is pure code: same judgments always produce the same report.
 One structured LLM call evaluates all capabilities.
+
+Self-correction: after LLM judgment, deliverable files that exist on disk
+override an 'absent' or 'weak' verdict with 'found' (filesystem is ground truth).
 """
+from collections import defaultdict
+from pathlib import Path
 from typing import Dict, List, Literal
 
 import networkx as nx
@@ -14,6 +19,16 @@ from src.llm.factory import get_provider
 from src.llm.prompts.base import MLOPS_EXPERT_PREAMBLE
 from src.platform.catalog.loader import CapabilitySpec, dependency_order, load_catalog
 from src.platform.understanding.retrieval import assets_by_role, find_evidence
+
+# Capabilities to include for each endpoint strategy (None = include all)
+_STRATEGY_CAPS: Dict[str, set | None] = {
+    "realtime": {"environment_lifecycle", "training", "model_lifecycle",
+                 "realtime_deployment", "monitoring", "retraining", "rollback"},
+    "batch":    {"environment_lifecycle", "training", "model_lifecycle",
+                 "batch_deployment", "monitoring", "retraining", "rollback"},
+    "both":     None,
+    "none":     {"environment_lifecycle", "training", "model_lifecycle"},
+}
 
 
 class EvidenceJudgment(BaseModel):
@@ -50,6 +65,87 @@ class GapItem(BaseModel):
 class GapReport(BaseModel):
     items: List[GapItem]
     order: List[str] = Field(default_factory=list)   # capability dependency order
+
+
+class PlanItem(BaseModel):
+    category: str
+    file: str
+    capability: str
+    component: str
+    status: Literal["present", "missing"]
+    note: str = ""
+
+
+class GenerationPlan(BaseModel):
+    endpoint_strategy: str
+    items: List[PlanItem]
+
+    def markdown(self) -> str:
+        present = [i for i in self.items if i.status == "present"]
+        missing = [i for i in self.items if i.status == "missing"]
+        lines = [f"## Generation Plan\n\n**Target:** `{self.endpoint_strategy}` endpoint\n"]
+        for label, section, icon in [("Present", present, "✅"), ("Missing — will generate", missing, "🔲")]:
+            if not section:
+                continue
+            lines.append(f"### {icon} {label}\n")
+            by_cat: Dict[str, List[PlanItem]] = defaultdict(list)
+            for item in section:
+                by_cat[item.category].append(item)
+            for cat in sorted(by_cat):
+                lines.append(f"**{cat}**")
+                for item in by_cat[cat]:
+                    note = f" _{item.note}_" if item.note else ""
+                    if item.status == "present":
+                        lines.append(f"- `{item.file}` ({item.capability}){note}")
+                    else:
+                        lines.append(f"- `{item.file}` → _{item.capability}.{item.component}_")
+                lines.append("")
+        lines.append(f"**{len(present)} files present · {len(missing)} files to generate.**")
+        return "\n".join(lines)
+
+
+def _fs_verify(repo_path: str, spec: CapabilitySpec,
+               judgment: EvidenceJudgment) -> EvidenceJudgment:
+    """Override absent/weak → found when ALL deliverable files exist on disk.
+
+    The LLM judges from the graph (an approximation). The filesystem is ground
+    truth: if the files are there, the component is there.
+    """
+    if judgment.status == "found" or not repo_path:
+        return judgment
+    ev_id = judgment.evidence_id.split(".", 1)[-1]
+    deliverables = spec.deliverables.get(ev_id, [])
+    if not deliverables:
+        return judgment
+    base = Path(repo_path)
+    existing = [d for d in deliverables if (base / d).exists()]
+    if not existing:
+        return judgment
+    if len(existing) == len(deliverables):
+        return judgment.model_copy(update={
+            "status": "found",
+            "citations": existing,
+            "note": (f"[fs-verified] {judgment.note}").strip(),
+        })
+    # partial: some but not all — promote absent→weak, keep weak as-is
+    if judgment.status == "absent":
+        return judgment.model_copy(update={
+            "status": "weak",
+            "citations": existing,
+            "note": (f"[fs-partial {len(existing)}/{len(deliverables)}] {judgment.note}").strip(),
+        })
+    return judgment
+
+
+def _deliverable_category(path: str) -> str:
+    p = path.replace("\\", "/").lower()
+    if "azdopipelines" in p or ".azuredevops" in p:
+        return "AzDO Pipeline"
+    if p.startswith("aml/") or "/aml/" in p:
+        return "AML Pipeline / Asset"
+    if p.endswith(".py"):
+        return "Python Script"
+    return "Config / Other"
 
 
 JUDGE_SYSTEM = MLOPS_EXPERT_PREAMBLE + """
@@ -108,7 +204,8 @@ def _capability_section(graph: nx.DiGraph, spec: CapabilitySpec) -> str:
     return "\n".join(lines)
 
 
-def _score(spec: CapabilitySpec, judgments: Dict[str, EvidenceJudgment]) -> CapabilityStatus:
+def _score(spec: CapabilitySpec, judgments: Dict[str, EvidenceJudgment],
+           repo_path: str = "") -> CapabilityStatus:
     score = 0
     evidence: List[EvidenceJudgment] = []
     missing: List[str] = []
@@ -118,6 +215,8 @@ def _score(spec: CapabilitySpec, judgments: Dict[str, EvidenceJudgment]) -> Capa
             EvidenceJudgment(evidence_id=f"{spec.capability}.{ev.id}", status="absent",
                              note="no judgment returned"),
         )
+        # Filesystem ground truth: files on disk override LLM verdict
+        judgment = _fs_verify(repo_path, spec, judgment)
         evidence.append(judgment)
         if judgment.status == "found":
             score += ev.weight
@@ -148,7 +247,7 @@ def _judge(provider, inventory: str, sections: List[str]) -> Dict[str, EvidenceJ
     return {j.evidence_id: j for j in result.judgments}
 
 
-def evaluate(graph: nx.DiGraph) -> CapabilityReport:
+def evaluate(graph: nx.DiGraph, repo_path: str = "") -> CapabilityReport:
     catalog = load_catalog()
     order = dependency_order(catalog)
     provider = get_provider()
@@ -169,7 +268,8 @@ def evaluate(graph: nx.DiGraph) -> CapabilityReport:
         sections = [_capability_section(graph, catalog[name]) for name in missing_caps]
         judgments.update(_judge(provider, inventory, sections))
 
-    statuses = [_score(catalog[name], judgments) for name in order]
+    # _score applies filesystem verification (repo_path) on top of LLM verdicts
+    statuses = [_score(catalog[name], judgments, repo_path) for name in order]
     complete = sum(1 for s in statuses if s.status == "complete")
     summary = (
         f"{complete}/{len(statuses)} capabilities complete; "
@@ -178,14 +278,42 @@ def evaluate(graph: nx.DiGraph) -> CapabilityReport:
     return CapabilityReport(capabilities=statuses, summary=summary)
 
 
-def gap_analysis(report: CapabilityReport) -> GapReport:
+def standard_generation_set(endpoint_strategy: str = "both") -> GapReport:
+    """The FULL standard deliverable set for an endpoint strategy, in dependency order.
+
+    This is the golden-path driver: generation always emits the complete standard MLOps
+    block for the strategy, independent of what the repository already contains. The
+    per-stage decision of wired/adapter/scaffold (for user ML code) is layered on top
+    via the contract manifest — it does NOT remove items from this set. Pipeline/AML/
+    infra deliverables are always (re)generated to the one standard template.
+    """
     catalog = load_catalog()
     order = dependency_order(catalog)
+    allowed = _STRATEGY_CAPS.get(endpoint_strategy)   # None = all capabilities
+    items: List[GapItem] = []
+    for name in order:
+        if allowed is not None and name not in allowed:
+            continue
+        spec = catalog[name]
+        for component, deliverables in spec.deliverables.items():
+            items.append(GapItem(
+                capability=name, component=component,
+                deliverables=deliverables, reason="standard set",
+            ))
+    return GapReport(items=items, order=order)
+
+
+def gap_analysis(report: CapabilityReport, endpoint_strategy: str = "both") -> GapReport:
+    catalog = load_catalog()
+    order = dependency_order(catalog)
+    allowed = _STRATEGY_CAPS.get(endpoint_strategy)  # None = all caps allowed
     items: List[GapItem] = []
     judgment_by_id = {
         j.evidence_id: j for s in report.capabilities for j in s.evidence
     }
     for name in order:
+        if allowed is not None and name not in allowed:
+            continue
         status = next((s for s in report.capabilities if s.capability == name), None)
         if not status or status.status == "complete":
             continue
@@ -200,3 +328,50 @@ def gap_analysis(report: CapabilityReport) -> GapReport:
                        (f"{judgment.status} evidence" if judgment else "absent"),
             ))
     return GapReport(items=items, order=order)
+
+
+def generation_plan(
+    report: CapabilityReport,
+    repo_path: str = "",
+    endpoint_strategy: str = "both",
+) -> GenerationPlan:
+    """Build the present-vs-missing plan, filtered to the endpoint strategy.
+
+    Files that exist on disk are marked present regardless of LLM verdict —
+    this is the same filesystem-ground-truth logic as _fs_verify.
+    """
+    catalog = load_catalog()
+    order = dependency_order(catalog)
+    allowed = _STRATEGY_CAPS.get(endpoint_strategy)
+    judgment_by_id = {j.evidence_id: j for s in report.capabilities for j in s.evidence}
+
+    items: List[PlanItem] = []
+    seen: set = set()   # deduplicate deliverable paths across components
+    for name in order:
+        if allowed is not None and name not in allowed:
+            continue
+        spec = catalog[name]
+        for ev in spec.evidence:
+            eid = f"{name}.{ev.id}"
+            j = judgment_by_id.get(eid)
+            llm_status = j.status if j else "absent"
+            for fpath in spec.deliverables.get(ev.id, []):
+                if fpath in seen:
+                    continue
+                seen.add(fpath)
+                on_disk = bool(repo_path) and (Path(repo_path) / fpath).exists()
+                if llm_status == "found" or on_disk:
+                    item_status: Literal["present", "missing"] = "present"
+                    note = "[fs-verified]" if (on_disk and llm_status != "found") else ""
+                else:
+                    item_status = "missing"
+                    note = ""
+                items.append(PlanItem(
+                    category=_deliverable_category(fpath),
+                    file=fpath,
+                    capability=name,
+                    component=ev.id,
+                    status=item_status,
+                    note=note,
+                ))
+    return GenerationPlan(endpoint_strategy=endpoint_strategy, items=items)

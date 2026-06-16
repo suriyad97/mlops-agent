@@ -24,6 +24,11 @@ def evaluate(model_dir: str, data_path: str, output_path: str) -> dict:
     results["r2"] = float(skm.r2_score(y, predictions))
     {%- endif %}
 
+    # Log to the AML run's MLflow tracker (URI is pre-wired in every AML job) so the
+    # metrics appear in Studio and feed champion/challenger comparison — not just a file.
+    for name, value in results.items():
+        mlflow.log_metric(name, value)
+
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     Path(output_path).write_text(json.dumps(results, indent=2))
     return results

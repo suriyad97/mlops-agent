@@ -14,14 +14,25 @@ from src.shared.logging import get_logger
 logger = get_logger(__name__)
 
 
+def _is_github(url: str) -> bool:
+    return "github.com" in (urlparse(url).hostname or "")
+
+
 def _inject_pat(url: str) -> str:
-    """Embed the repo PAT into an https clone URL."""
+    """Embed the repo PAT into an https clone URL.
+
+    AzDO:   https://:<pat>@dev.azure.com/...   (colon-prefixed basic auth)
+    GitHub: https://<token>@github.com/...     (token as username)
+    """
     pat = os.getenv("REPO_PAT") or get_settings().repo_pat
     if not pat or "@" in urlparse(url).netloc:
         return url
     parsed = urlparse(url)
     port = f":{parsed.port}" if parsed.port else ""
-    return urlunparse(parsed._replace(netloc=f":{pat}@{parsed.hostname}{port}"))
+    hostname = parsed.hostname or ""
+    if _is_github(url):
+        return urlunparse(parsed._replace(netloc=f"{pat}@{hostname}{port}"))
+    return urlunparse(parsed._replace(netloc=f":{pat}@{hostname}{port}"))
 
 
 def _clean_url(repo_url: str) -> str:

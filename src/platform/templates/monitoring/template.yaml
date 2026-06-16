@@ -5,7 +5,7 @@ components:
       - { src: detect_drift.py.j2, dest: src/monitoring/detect_drift.py }
   monitoring_aml_pipeline:
     files:
-      - { src: monitoring_pipeline.yml.j2, dest: aml/pipelines/monitoring_pipeline.yml }
+      - { src: monitoring_pipeline.yml.j2, dest: MLpipelines/monitoring_pipeline.yml }
   azdo_monitoring:
     files:
       - { src: cm-monitoring.yml.j2, dest: azdopipelines/cm-monitoring.yml }

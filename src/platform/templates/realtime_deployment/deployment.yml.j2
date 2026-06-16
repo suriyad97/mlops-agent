@@ -4,7 +4,16 @@ endpoint_name: {{ endpoint_name }}
 model: azureml:{{ model_name }}@latest
 environment: azureml:{{ environment_name }}@latest
 code_configuration:
-  code: ../../src
-  scoring_script: score.py
-instance_type: Standard_DS2_v2
-instance_count: 1
+  code: ../
+  scoring_script: {{ score_script }}
+instance_type: {{ instance_type }}
+instance_count: {{ instance_count }}
+# Model Data Collector: logs production request inputs + outputs to blob so the
+# monitoring pipeline (and AML Model Monitoring) has live data to compute drift on.
+data_collector:
+  collections:
+    model_inputs:
+      enabled: 'true'
+    model_outputs:
+      enabled: 'true'
+  sampling_rate: 1.0

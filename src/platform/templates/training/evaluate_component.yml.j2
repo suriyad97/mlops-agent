@@ -1,0 +1,16 @@
+$schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.json
+type: command
+name: evaluate_{{ safe_name | replace('-', '_') }}
+display_name: Evaluate {{ model_name }}
+version: "1"
+inputs:
+  model_input: { type: uri_folder }
+  eval_data: { type: uri_file }
+outputs:
+  metrics: { type: uri_folder }
+environment: azureml:{{ environment_name }}@latest
+code: ../
+command: >-
+  python {{ evaluate_script }} --model-dir ${{ '{{' }}inputs.model_input{{ '}}' }}
+  --data-path ${{ '{{' }}inputs.eval_data{{ '}}' }}
+  --output ${{ '{{' }}outputs.metrics{{ '}}' }}/metrics.json

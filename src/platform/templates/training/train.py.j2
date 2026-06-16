@@ -1,25 +1,47 @@
-"""Train {{ model_name }} ({{ project_type }})."""
+"""Train {{ model_name }} ({{ project_type }}) with Optuna hyperparameter search."""
 import argparse
 from pathlib import Path
 
 import mlflow
+import optuna
 import pandas as pd
+from sklearn.model_selection import cross_val_score
+
+# Number of Optuna trials — configurable upfront via pipeline parameters.
+N_TRIALS = {{ optuna_trials }}
 
 
-def train(data_path: str, output_dir: str) -> None:
+def train(data_path: str, output_dir: str, n_trials: int = N_TRIALS) -> None:
     df = pd.read_csv(data_path)
     target = "{{ target_variable or 'target' }}"
     X, y = df.drop(columns=[target]), df[target]
 
+    mlflow.autolog()
     {% if project_type in ("binary_classification", "multiclass_classification") -%}
     from sklearn.linear_model import LogisticRegression
-    model = LogisticRegression(max_iter=1000)
+
+    def objective(trial):
+        C = trial.suggest_float("C", 1e-3, 1e2, log=True)
+        clf = LogisticRegression(max_iter=1000, C=C)
+        return cross_val_score(clf, X, y, cv=3, scoring="f1_weighted").mean()
+
+    study = optuna.create_study(direction="maximize")
+    study.optimize(objective, n_trials=n_trials)
+    model = LogisticRegression(max_iter=1000, **study.best_params)
     {%- else -%}
-    from sklearn.linear_model import LinearRegression
-    model = LinearRegression()
+    from sklearn.linear_model import Ridge
+
+    def objective(trial):
+        alpha = trial.suggest_float("alpha", 1e-3, 1e2, log=True)
+        reg = Ridge(alpha=alpha)
+        return cross_val_score(reg, X, y, cv=3, scoring="r2").mean()
+
+    study = optuna.create_study(direction="maximize")
+    study.optimize(objective, n_trials=n_trials)
+    model = Ridge(**study.best_params)
     {%- endif %}
 
-    mlflow.autolog()
+    mlflow.log_params(study.best_params)
     model.fit(X, y)
     Path(output_dir).mkdir(parents=True, exist_ok=True)
     mlflow.sklearn.save_model(model, output_dir)
@@ -29,5 +51,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--data-path", required=True)
     parser.add_argument("--output-dir", default="outputs/model")
+    parser.add_argument("--n-trials", type=int, default=N_TRIALS)
     args = parser.parse_args()
-    train(args.data_path, args.output_dir)
+    train(args.data_path, args.output_dir, args.n_trials)

@@ -32,6 +32,42 @@ def _repo_path(project: Project) -> str:
     return path
 
 
+def load_or_propose_contract(project: Project, graph) -> "object":
+    """Return the project's contract manifest — the stored (user-edited) one if present,
+    otherwise a fresh proposal pre-filled from the knowledge graph."""
+    from src.platform.understanding.contract import ContractManifest, propose_contract
+    stored = (project.profile or {}).get("contract")
+    if stored:
+        try:
+            return ContractManifest.model_validate(stored)
+        except Exception:
+            pass
+    return propose_contract(graph)
+
+
+def _build_generation_inputs(project: Project, graph):
+    """Assemble everything generation needs for the golden-path (full standard set).
+
+    Returns (items, params, contract, existing_pipeline_files, repo_context).
+    Generation is driven by the strategy's complete standard set — NOT by a gap report.
+    """
+    from src.config.settings import get_settings
+    from src.platform.evaluation.evaluator import standard_generation_set
+    from src.platform.generation.engine import build_params
+    from src.platform.understanding.retrieval import assets_by_role, graph_digest
+
+    strategy = (project.profile or {}).get("endpoint_strategy", "both")
+    items = [i.model_dump() for i in standard_generation_set(strategy).items]
+    contract = load_or_propose_contract(project, graph).for_strategy(strategy).resolved()
+    existing = assets_by_role(graph, "azdo_pipeline") + assets_by_role(graph, "aml_asset")
+    params = build_params(project.name, project.profile or {}, get_settings())
+    try:
+        repo_context = graph_digest(graph, max_chars=2500)
+    except Exception:
+        repo_context = ""
+    return items, params, contract, existing, repo_context
+
+
 def _graph_tools(project_id: str) -> list:
     """Knowledge-graph query tools, bound to this project's saved graph."""
     from src.shared.react import ReactTool
@@ -72,16 +108,22 @@ def _graph_tools(project_id: str) -> list:
                 .first()
             )
             if not report:
-                return f"No '{kind}' report yet. Available kinds: blueprint, capability, gap. Run a scan/evaluation first."
+                return (f"No '{kind}' report yet. Available kinds: blueprint, capability, gap, generation. "
+                        f"For what was generated use get_generation_report; for what's required use "
+                        f"endpoint_requirement_plan (neither needs an evaluation).")
             return json.dumps(report.payload)[:7000]
 
     def generate_assets(capabilities: str = ""):
-        """Chat-gated generation (R1): streams per-component progress as thinking events."""
+        """Chat-gated generation (R1): streams per-component progress as thinking events.
+
+        Golden path: always generates the FULL standard set for the project's endpoint
+        strategy, gated per user-ML-code stage by the contract manifest (wired/adapter/
+        scaffold). Does not require a gap report.
+        """
         import json
         from src.app.db import SessionLocal
-        from src.config.settings import get_settings
-        from src.platform.generation.engine import build_params, generate
-        from src.platform.understanding.retrieval import graph_digest, load_graph
+        from src.platform.generation.engine import generate
+        from src.platform.understanding.retrieval import load_graph
 
         wanted = [c.strip() for c in capabilities.split(",") if c.strip()] or None
 
@@ -90,34 +132,25 @@ def _graph_tools(project_id: str) -> list:
             if not project:
                 yield json.dumps({"error": "project not found"})
                 return
-
-            gap = (
-                s.query(Report)
-                .filter_by(project_id=project_id, kind="gap")
-                .order_by(Report.created_at.desc())
-                .first()
-            )
-            if not gap or not gap.payload.get("items"):
-                yield json.dumps({"error": "no gap report — run an evaluation first"})
-                return
-
-            items = gap.payload["items"]
-            if wanted:
-                items = [i for i in items if i["capability"] in wanted]
-            if not items:
-                yield json.dumps({"error": f"no gap items for {wanted}"})
-                return
-
             try:
                 local_path = _repo_path(project)
             except NoRepoPath as exc:
                 yield json.dumps({"error": str(exc)})
                 return
-            params = build_params(project.name, project.profile or {}, get_settings())
             try:
-                repo_context = graph_digest(load_graph(project_id), max_chars=2500)
+                graph = load_graph(project_id)
             except FileNotFoundError:
-                repo_context = ""
+                yield json.dumps({"error": "no knowledge graph — run a scan first"})
+                return
+
+            items, params, contract, existing, repo_context = _build_generation_inputs(project, graph)
+            if wanted:
+                items = [i for i in items if i["capability"] in wanted]
+                contract = contract.model_copy(update={
+                    "stages": [st for st in contract.stages if st.capability in wanted]})
+            if not items:
+                yield json.dumps({"error": f"no standard components for {wanted}"})
+                return
 
         # Collect progress messages via a queue; generate() runs synchronously
         # but we yield thinking events between components via on_progress callback.
@@ -130,6 +163,8 @@ def _graph_tools(project_id: str) -> list:
                 report = generate(
                     local_path, items, params,
                     repo_context=repo_context,
+                    contract=contract,
+                    existing_pipeline_files=existing,
                     on_progress=lambda msg: progress_q.put({"type": "thinking", "content": msg}),
                 )
                 from src.app.db import SessionLocal as SL
@@ -159,6 +194,115 @@ def _graph_tools(project_id: str) -> list:
         yield result_holder[0] if result_holder else json.dumps({"error": "no result"})
 
 
+    def check_infra() -> str:
+        """Run Azure + AzDO infrastructure prerequisite checks and return a markdown table."""
+        from src.app.db import SessionLocal
+        from src.tools.azure_infra_tools import check_all_prerequisites
+        try:
+            with SessionLocal() as s:
+                p = s.get(Project, project_id)
+                profile = dict(p.profile or {}) if p else {}
+            report = check_all_prerequisites(profile_overrides=profile)
+            return report.markdown()
+        except Exception as exc:
+            return f"Prerequisite check failed: {exc}"
+
+    def check_readiness() -> str:
+        """Check pipeline stage readiness in dependency order (CI→CT→CD→Monitoring→Retraining).
+        Returns a table showing what's ready, what's blocking, and the recommended next step."""
+        from src.app.db import SessionLocal
+        from src.tools.pipeline_readiness import check_pipeline_readiness
+        try:
+            with SessionLocal() as s:
+                p = s.get(Project, project_id)
+                repo_path = (p.local_repo_path or "") if p else ""
+                profile = dict(p.profile or {}) if p else {}
+            report = check_pipeline_readiness(repo_path=repo_path, profile=profile)
+            return report.markdown()
+        except Exception as exc:
+            return f"Readiness check failed: {exc}"
+
+    def requirement_plan_tool() -> str:
+        """Backward dependency plan for the project's endpoint strategy: what is required,
+        who owns each piece (data scientist / platform / infra), and whether it is done.
+        ALWAYS show this before generating, so the user sees their job vs the platform's."""
+        from src.app.db import SessionLocal
+        from src.platform.planning.requirement_plan import endpoint_requirement_plan
+        from src.platform.understanding.retrieval import load_graph
+        try:
+            graph = load_graph(project_id)
+        except FileNotFoundError:
+            graph = None
+        try:
+            with SessionLocal() as s:
+                p = s.get(Project, project_id)
+                if not p:
+                    return "project not found"
+                repo_path = p.local_repo_path or ""
+                strategy = (p.profile or {}).get("endpoint_strategy", "both")
+                contract = (load_or_propose_contract(p, graph).for_strategy(strategy).resolved()
+                            if graph is not None else None)
+            plan = endpoint_requirement_plan(repo_path, strategy, contract)
+            return plan.markdown()
+        except Exception as exc:
+            return f"Requirement plan failed: {exc}"
+
+    def get_generation_plan_tool() -> str:
+        """Grouped present-vs-missing plan for the project's endpoint strategy."""
+        import json
+        from src.app.db import Report as DBReport, SessionLocal
+        from src.platform.evaluation.evaluator import CapabilityReport, generation_plan
+
+        with SessionLocal() as s:
+            project = s.get(Project, project_id)
+            if not project:
+                return "project not found"
+            cap_row = (
+                s.query(DBReport)
+                .filter_by(project_id=project_id, kind="capability")
+                .order_by(DBReport.created_at.desc())
+                .first()
+            )
+            if not cap_row:
+                return ("No capability report (golden-path generation doesn't need one). "
+                        "For what's required and its status use endpoint_requirement_plan; "
+                        "for what was already generated use get_generation_report.")
+            cap_report = CapabilityReport.model_validate(cap_row.payload)
+            strategy = (project.profile or {}).get("endpoint_strategy", "both")
+            repo_path = project.local_repo_path or ""
+
+        plan = generation_plan(cap_report, repo_path=repo_path, endpoint_strategy=strategy)
+        return plan.markdown()
+
+    def generation_report_tool() -> str:
+        """What has actually been GENERATED for this project: files written, adapters,
+        scaffolds to implement, user scripts reused (wired), and legacy files superseded.
+        Golden-path generation needs NO evaluation or gap report — read this directly."""
+        from src.app.db import Report as DBReport, SessionLocal
+        with SessionLocal() as s:
+            row = (
+                s.query(DBReport)
+                .filter_by(project_id=project_id, kind="generation")
+                .order_by(DBReport.created_at.desc())
+                .first()
+            )
+            if not row:
+                return ("Nothing has been generated yet for this project. Run generation "
+                        "(Readiness step → 'Generate pipelines', or ask me to 'generate the pipelines').")
+            p = row.payload or {}
+
+        def _fmt(items: list) -> str:
+            return "\n".join(f"  - `{x}`" for x in items) or "  _(none)_"
+
+        return "\n".join([
+            f"## Generation report\n\n{p.get('summary', '')}\n",
+            f"### Files written ({len(p.get('written_files', []))})", _fmt(p.get('written_files', [])),
+            f"\n### Adapters — wrap your existing code ({len(p.get('adapter_files', []))})", _fmt(p.get('adapter_files', [])),
+            f"\n### Scaffolds — you must implement these ({len(p.get('scaffold_files', []))})", _fmt(p.get('scaffold_files', [])),
+            f"\n### Your scripts reused as-is / wired ({len(p.get('wired_skipped', []))})", _fmt(p.get('wired_skipped', [])),
+            f"\n### Superseded — review & delete ({len(p.get('superseded_files', []))})", _fmt(p.get('superseded_files', [])),
+        ])
+
     def validate_assets() -> str:
         import json
         from src.app.db import Project, SessionLocal
@@ -179,6 +323,55 @@ def _graph_tools(project_id: str) -> list:
         with SessionLocal() as s:
             result = register_pipelines(s, s.get(Project, project_id))
         return json.dumps(result)[:4000]
+
+    def check_file_on_disk(path: str) -> str:
+        """Directly inspect a file OR directory on disk in the project's cloned repo.
+
+        Use this when the user says something is present but your knowledge graph
+        shows it as missing. The filesystem is ground truth — trust it over the graph.
+        - For a FILE: returns a content preview (first 40 lines).
+        - For a DIRECTORY: returns a listing of its contents (files + subdirectories).
+        - Otherwise: a clear 'not found' message.
+        """
+        from pathlib import Path
+        from src.app.db import SessionLocal
+        with SessionLocal() as s:
+            p = s.get(Project, project_id)
+            repo_path = (p.local_repo_path or "") if p else ""
+        if not repo_path:
+            return "Cannot check — repo not cloned yet. Run Scan first."
+        full = Path(repo_path) / path
+        if not full.exists():
+            # Try case-insensitive search as a fallback
+            parent = full.parent
+            if parent.is_dir():
+                matches = [f for f in parent.iterdir() if f.name.lower() == full.name.lower()]
+                if matches:
+                    full = matches[0]
+                else:
+                    return f"NOT FOUND on disk: {path}\nThe knowledge graph and filesystem agree — this does not exist. It needs to be generated."
+            else:
+                return f"NOT FOUND on disk: {path} (parent directory {parent} also missing)"
+        # Directory: list contents (reading a dir as a file raises 'permission denied' on Windows)
+        if full.is_dir():
+            try:
+                entries = sorted(full.iterdir(), key=lambda f: (f.is_file(), f.name.lower()))
+            except Exception as exc:
+                return f"DIRECTORY on disk: {path}/ (could not list: {exc})"
+            if not entries:
+                return f"DIRECTORY on disk: {path}/ is EMPTY."
+            rel = Path(repo_path)
+            listing = "\n".join(
+                f"  {'📁' if e.is_dir() else '📄'} {e.relative_to(rel).as_posix()}{'/' if e.is_dir() else ''}"
+                for e in entries
+            )
+            return f"DIRECTORY on disk: {path}/ — {len(entries)} entr{'y' if len(entries) == 1 else 'ies'}:\n{listing}"
+        try:
+            lines = full.read_text(encoding="utf-8", errors="replace").splitlines()
+            preview = "\n".join(lines[:40])
+            return f"FOUND on disk: {full}\n\n```\n{preview}\n{'...(truncated)' if len(lines) > 40 else ''}\n```"
+        except Exception as exc:
+            return f"EXISTS on disk: {full} (could not read: {exc})"
 
     def aml_job_logs(job_name: str) -> str:
         from src.tools.aml_tools import get_aml_job_logs
@@ -210,6 +403,44 @@ def _graph_tools(project_id: str) -> list:
                            "pipeline_yaml": pipeline_yaml, "repo_path": repo_path})
 
     return [
+        ReactTool("endpoint_requirement_plan",
+                  "Produce the REQUIREMENT PLAN for the project's endpoint strategy: resolves backward "
+                  "from the endpoint through its full dependency chain and lists every requirement, who "
+                  "owns it (🧑‍🔬 data scientist = ML code · 🤖 platform = auto-generated YAML/pipelines · "
+                  "☁️ infra = cloud prerequisites), and whether it's done. ALWAYS call this and show it to "
+                  "the user BEFORE generating assets, so they see exactly what is their job vs the "
+                  "platform's, and what is still blocking a working endpoint.",
+                  requirement_plan_tool, {"type": "object", "properties": {}}),
+        ReactTool("check_pipeline_readiness",
+                  "Check readiness of all pipeline stages in the MLOps dependency chain: "
+                  "CI (environment build) → CT (training) → CD (deployment) → Monitoring → Retraining. "
+                  "Each stage shows what's present, what's blocking, and what it will produce. "
+                  "ALWAYS call this before recommending that the user trigger any pipeline — "
+                  "it tells you whether prerequisites from earlier stages are satisfied. "
+                  "For example, CD cannot run without a registered model (from CT), and CT cannot "
+                  "run without an AML environment (from CI).",
+                  check_readiness, {"type": "object", "properties": {}}),
+        ReactTool("check_infrastructure_prerequisites",
+                  "Scan whether all Azure + AzDO infrastructure prerequisites are in place before "
+                  "any pipeline can run: Resource Group, ACR (Container Registry), AML Workspace, "
+                  "AML Compute Cluster, AzDO→Azure RM service connection, AzDO→ACR service connection. "
+                  "Returns a status table (✅ Ready / ⚠️ Not configured / ❌ Not found). "
+                  "Call this FIRST whenever the user asks about running, triggering, or setting up "
+                  "any pipeline — show the table so they know exactly what needs to be created.",
+                  check_infra, {"type": "object", "properties": {}}),
+        ReactTool("get_generation_report",
+                  "What has actually been GENERATED for this project: files written, adapters "
+                  "(wrappers over the user's code), scaffolds the user must implement, the user's "
+                  "scripts reused/wired, and legacy files superseded. ALWAYS use THIS to answer "
+                  "'what was generated / created / what files / what's missing'. Golden-path "
+                  "generation needs NO evaluation or gap report — never tell the user to evaluate "
+                  "first for these questions.",
+                  generation_report_tool, {"type": "object", "properties": {}}),
+        ReactTool("get_generation_plan",
+                  "Structured PRESENT-vs-MISSING plan (needs a capability report from an evaluation). "
+                  "Prefer endpoint_requirement_plan (no evaluation needed) and get_generation_report "
+                  "for golden-path projects.",
+                  get_generation_plan_tool, {"type": "object", "properties": {}}),
         ReactTool("register_generated_pipelines",
                   "Register the committed AzDO pipeline YAMLs as pipeline definitions in Azure "
                   "DevOps (creates definitions only — runs nothing). Requires stage 'committed'. "
@@ -247,8 +478,21 @@ def _graph_tools(project_id: str) -> list:
                   "returns, show the user the per-component report and ask whether anything is missing.",
                   generate_assets,
                   {"type": "object", "properties": {"capabilities": {"type": "string"}}}),
+        ReactTool("check_file_on_disk",
+                  "Directly inspect a FILE or DIRECTORY in the project's cloned repo by checking the "
+                  "filesystem — bypasses the knowledge graph entirely. Pass a file path to preview its "
+                  "contents, or a DIRECTORY path (e.g. 'MLpipelines', 'src') to LIST what is inside it. "
+                  "ALWAYS call this when the user says something is present that you believe is missing, "
+                  "or when you need to see what a folder actually contains. The filesystem is ground "
+                  "truth: if it returns FOUND/DIRECTORY, correct your earlier assessment. Never claim "
+                  "'permission denied' for a folder — call this with the folder path to list it. "
+                  "path is relative to the repo root, e.g. 'azdopipelines/ct-train.yml' or 'MLpipelines'.",
+                  check_file_on_disk,
+                  {"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"]}),
         ReactTool("get_report",
-                  "Latest stored report for this project. kind: blueprint | capability | gap.",
+                  "Latest stored report for this project. kind: blueprint | capability | gap | generation. "
+                  "For 'what was generated' prefer get_generation_report; for 'what's required' prefer "
+                  "endpoint_requirement_plan.",
                   latest_report,
                   {"type": "object", "properties": {"kind": {"type": "string"}}, "required": ["kind"]}),
         ReactTool("repo_graph_digest",
@@ -338,8 +582,12 @@ def evaluate_project(session: Session, project: Project) -> dict:
     from src.platform.understanding.retrieval import load_graph
 
     graph = load_graph(project.id)
-    capability_report = evaluate(graph)
-    gap_report = gap_analysis(capability_report)
+    repo_path = project.local_repo_path or ""
+    endpoint_strategy = (project.profile or {}).get("endpoint_strategy", "both")
+    # repo_path enables filesystem self-correction inside _score()
+    capability_report = evaluate(graph, repo_path=repo_path)
+    # filter gap to capabilities on the path to the project's target endpoint
+    gap_report = gap_analysis(capability_report, endpoint_strategy=endpoint_strategy)
 
     session.add(Report(id=new_id(), project_id=project.id, kind="capability",
                        payload=capability_report.model_dump()))
@@ -353,46 +601,115 @@ def evaluate_project(session: Session, project: Project) -> dict:
 
 def generate_project(session: Session, project: Project,
                      capabilities: list | None = None) -> dict:
-    """P4: template-based generation for the project's open gaps (user-gated).
+    """P4: golden-path generation of the FULL standard MLOps block (user-gated).
 
-    Writes to the cloned working tree only — committing is a later, separately
-    gated stage (R1/R2).
+    Always emits the complete standard set for the project's endpoint strategy, gated
+    per user-ML-code stage by the contract manifest (wired/adapter/scaffold). Legacy
+    non-standard pipelines are flagged as superseded for human-approved removal.
+    Writes to the cloned working tree only — committing is a later, separately gated stage.
     """
     activate(project)
-    from src.config.settings import get_settings
-    from src.platform.generation.engine import build_params, generate
-    from src.platform.understanding.retrieval import graph_digest, load_graph
-    from src.tools.git_tools import clone_repo
+    from src.platform.generation.engine import generate
+    from src.platform.understanding.retrieval import load_graph
 
-    gap = (
-        session.query(Report)
-        .filter(Report.project_id == project.id, Report.kind == "gap")
-        .order_by(Report.created_at.desc())
-        .first()
-    )
-    if not gap or not gap.payload.get("items"):
-        return {"error": "no gap report with open items — run an evaluation first"}
+    try:
+        graph = load_graph(project.id)
+    except FileNotFoundError:
+        return {"error": "no knowledge graph — run a scan first"}
 
-    items = gap.payload["items"]
+    items, params, contract, existing, repo_context = _build_generation_inputs(project, graph)
     if capabilities:
         items = [i for i in items if i["capability"] in capabilities]
+        contract = contract.model_copy(update={
+            "stages": [st for st in contract.stages if st.capability in capabilities]})
         if not items:
-            return {"error": f"no gap items for capabilities {capabilities}"}
+            return {"error": f"no standard components for capabilities {capabilities}"}
 
     local_path = _repo_path(project)
-    params = build_params(project.name, project.profile or {}, get_settings())
-    try:
-        repo_context = graph_digest(load_graph(project.id), max_chars=2500)
-    except FileNotFoundError:
-        repo_context = ""
-
-    report = generate(local_path, items, params, repo_context=repo_context)
+    report = generate(local_path, items, params, repo_context=repo_context,
+                      contract=contract, existing_pipeline_files=existing)
 
     session.add(Report(id=new_id(), project_id=project.id, kind="generation",
                        payload=report.model_dump()))
     project.stage = "generated"
     session.commit()
     return report.model_dump()
+
+
+# Stage key -> profile script-path field (so build_params / readiness see the resolved paths)
+_STAGE_PROFILE_KEY = {
+    "training": "train_script",
+    "scoring_realtime": "score_script",
+    "scoring_batch": "batch_score_script",
+    "drift": "drift_script",
+    "thresholds": "evaluate_thresholds_script",
+}
+
+
+def get_contract(session: Session, project: Project) -> dict:
+    """Return the project's contract checklist — stored (user-edited) if present, else a
+    fresh proposal pre-filled from the knowledge graph, filtered to the endpoint strategy."""
+    activate(project)
+    from src.platform.understanding.retrieval import load_graph
+
+    try:
+        graph = load_graph(project.id)
+    except FileNotFoundError:
+        return {"error": "no knowledge graph — run a scan first"}
+    strategy = (project.profile or {}).get("endpoint_strategy", "both")
+    contract = load_or_propose_contract(project, graph).for_strategy(strategy).resolved()
+    return {"endpoint_strategy": strategy, "contract": contract.model_dump()}
+
+
+def save_contract(session: Session, project: Project, manifest: dict) -> dict:
+    """Persist the user-confirmed checklist into the project profile and mirror the
+    resolved pipeline paths into the script-path fields used by generation/readiness."""
+    activate(project)
+    from src.platform.understanding.contract import ContractManifest
+
+    cm = ContractManifest.model_validate(manifest).resolved()
+    profile = dict(project.profile or {})
+    profile["contract"] = cm.model_dump()
+    for st in cm.stages:
+        key = _STAGE_PROFILE_KEY.get(st.stage)
+        if key:
+            profile[key] = st.pipeline_path()
+    project.profile = profile
+    session.commit()
+    return {"saved": True, "contract": cm.model_dump()}
+
+
+def get_generation_report(session: Session, project: Project) -> dict:
+    """The latest stored generation report (what was written/adapted/scaffolded/superseded),
+    or an empty marker when nothing has been generated yet."""
+    row = (
+        session.query(Report)
+        .filter(Report.project_id == project.id, Report.kind == "generation")
+        .order_by(Report.created_at.desc())
+        .first()
+    )
+    if not row:
+        return {"generated": False}
+    payload = dict(row.payload or {})
+    payload["generated"] = True
+    return payload
+
+
+def get_requirement_plan(session: Session, project: Project) -> dict:
+    """The endpoint requirement plan: backward dependency chain, ownership, tick status."""
+    activate(project)
+    from src.platform.planning.requirement_plan import endpoint_requirement_plan
+    from src.platform.understanding.retrieval import load_graph
+
+    try:
+        graph = load_graph(project.id)
+    except FileNotFoundError:
+        graph = None
+    strategy = (project.profile or {}).get("endpoint_strategy", "both")
+    contract = (load_or_propose_contract(project, graph).for_strategy(strategy).resolved()
+                if graph is not None else None)
+    plan = endpoint_requirement_plan(project.local_repo_path or "", strategy, contract)
+    return {"plan": plan.model_dump(), "markdown": plan.markdown()}
 
 
 def _latest_generated_files(session: Session, project_id: str) -> list:

@@ -10,7 +10,7 @@ inputs:
 jobs:
   retrain:
     type: command
-    component: ../components/train.yml
+    component: ./train.yml
     inputs:
       training_data: ${{ '{{' }}parent.inputs.training_data{{ '}}' }}
     compute: {{ compute_target }}

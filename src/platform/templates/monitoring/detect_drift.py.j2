@@ -6,7 +6,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-PSI_ALERT_THRESHOLD = 0.2
+PSI_ALERT_THRESHOLD = {{ drift_threshold }}
 
 
 def psi(expected: pd.Series, actual: pd.Series, bins: int = 10) -> float:

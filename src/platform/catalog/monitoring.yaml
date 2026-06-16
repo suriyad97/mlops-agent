@@ -20,7 +20,7 @@ evidence:
     weight: 30
 deliverables:
   drift_detection_code: [src/monitoring/detect_drift.py]
-  monitoring_aml_pipeline: [aml/pipelines/monitoring_pipeline.yml]
+  monitoring_aml_pipeline: [MLpipelines/monitoring_pipeline.yml]
   azdo_monitoring: [azdopipelines/cm-monitoring.yml]
 validation:
   - local az ml job create (monitoring pipeline, dev)

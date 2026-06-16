@@ -2,8 +2,8 @@ capability: batch_deployment
 components:
   batch_endpoint_assets:
     files:
-      - { src: batch_endpoint.yml.j2, dest: aml/deployment/batch_endpoint.yml }
-      - { src: batch_deployment.yml.j2, dest: aml/deployment/batch_deployment.yml }
+      - { src: batch_endpoint.yml.j2, dest: MLpipelines/batch_endpoint.yml }
+      - { src: batch_deployment.yml.j2, dest: MLpipelines/batch_deployment.yml }
   inference_code:
     files:
       - { src: batch_score.py.j2, dest: src/batch_score.py }

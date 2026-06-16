@@ -1,7 +1,7 @@
 # Continuous training: submit the AML training pipeline from AzDO
 trigger:
   branches: { include: [{{ default_branch }}] }
-  paths: { include: [src/*, aml/components/*, aml/pipelines/training_pipeline.yml] }
+  paths: { include: [src/*, MLpipelines/*] }
 
 pool: { vmImage: ubuntu-latest }
 
@@ -18,7 +18,7 @@ stages:
               scriptLocation: inlineScript
               inlineScript: |
                 set -e
-                run_id=$(az ml job create --file aml/pipelines/training_pipeline.yml \
+                run_id=$(az ml job create --file MLpipelines/training_pipeline.yml \
                   --resource-group $(RESOURCE_GROUP_DEV) --workspace-name $(WORKSPACE_DEV) \
                   --query name -o tsv)
                 az ml job stream --name "$run_id" \

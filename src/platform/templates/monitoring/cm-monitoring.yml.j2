@@ -1,7 +1,7 @@
 # Continuous monitoring: scheduled drift detection + alert routing
 schedules:
-  - cron: "0 6 * * *"
-    displayName: Daily drift check
+  - cron: "{{ monitoring_cron }}"
+    displayName: Scheduled drift check
     branches: { include: [{{ default_branch }}] }
     always: true
 
@@ -21,7 +21,7 @@ stages:
               scriptLocation: inlineScript
               inlineScript: |
                 set -e
-                run_id=$(az ml job create --file aml/pipelines/monitoring_pipeline.yml \
+                run_id=$(az ml job create --file MLpipelines/monitoring_pipeline.yml \
                   --resource-group $(RESOURCE_GROUP_PROD) --workspace-name $(WORKSPACE_PROD) \
                   --query name -o tsv)
                 az ml job stream --name "$run_id" \

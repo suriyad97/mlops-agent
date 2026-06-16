@@ -5,7 +5,7 @@ components:
       - { src: evaluate_thresholds.py.j2, dest: src/monitoring/evaluate_thresholds.py }
   retraining_pipeline:
     files:
-      - { src: retraining_pipeline.yml.j2, dest: aml/pipelines/retraining_pipeline.yml }
+      - { src: retraining_pipeline.yml.j2, dest: MLpipelines/retraining_pipeline.yml }
   azdo_ct:
     files:
       - { src: ct-retrain.yml.j2, dest: azdopipelines/ct-retrain.yml }

@@ -20,7 +20,7 @@ evidence:
     weight: 25
 deliverables:
   trigger_mechanism: [src/monitoring/evaluate_thresholds.py]
-  retraining_pipeline: [aml/pipelines/retraining_pipeline.yml]
+  retraining_pipeline: [MLpipelines/retraining_pipeline.yml]
   azdo_ct: [azdopipelines/ct-retrain.yml]
 validation:
   - azdo previewRun

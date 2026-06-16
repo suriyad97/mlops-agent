@@ -28,6 +28,12 @@ const TOOL_LABELS: Record<string, string> = {
   get_background_job: 'Checking job status',
   list_background_jobs: 'Listing background jobs',
   get_aml_job_logs: 'Fetching AML logs',
+  get_generation_plan: 'Building generation plan',
+  watch_pipeline_run: 'Monitoring pipeline run',
+  endpoint_requirement_plan: 'Building requirement plan',
+  check_pipeline_readiness: 'Checking pipeline readiness',
+  check_file_on_disk: 'Verifying file on disk',
+  check_infrastructure_prerequisites: 'Checking infrastructure prerequisites',
 }
 const toolLabel = (t: string) => TOOL_LABELS[t] ?? t
 
@@ -115,7 +121,7 @@ function Bubble({ message }: { message: Message }) {
   )
 }
 
-export default function Chat() {
+export default function Chat({ embeddedProjectId }: { embeddedProjectId?: string }) {
   const [params, setParams] = useSearchParams()
   const [projects, setProjects] = useState<Project[]>([])
   const [threads, setThreads] = useState<Thread[]>([])
@@ -127,9 +133,12 @@ export default function Chat() {
   const [liveThinking, setLiveThinking] = useState('')
   const bottomRef = useRef<HTMLDivElement>(null)
 
-  const projectId = params.get('project') ?? ''
+  // When embedded, use the prop directly; otherwise fall back to query param
+  const embedded = !!embeddedProjectId
+  const projectId = embeddedProjectId ?? params.get('project') ?? ''
 
   useEffect(() => {
+    if (embedded) return  // don't load all projects in embedded mode
     api.listProjects().then((ps) => {
       setProjects(ps)
       if (!projectId && ps.length > 0) setParams({ project: ps[0].id })
@@ -235,6 +244,68 @@ export default function Chat() {
   }
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages, busy])
+
+  // Embedded mode: compact single-column layout (no project selector, no thread sidebar)
+  if (embedded) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
+        {/* Thread strip */}
+        <div style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--border)', display: 'flex', gap: '0.5rem', alignItems: 'center', overflowX: 'auto', flexShrink: 0 }}>
+          <button className="btn btn-sm btn-primary" onClick={newThread} disabled={!projectId}>＋ New thread</button>
+          {threads.map(t => (
+            <button key={t.id}
+              className={`btn btn-sm ${activeThread === t.id ? 'btn-active' : ''}`}
+              style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+              onClick={() => selectThread(t.id)}
+            >
+              {t.title}
+            </button>
+          ))}
+        </div>
+
+        {/* Messages */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          {messages.length === 0 && (
+            <div style={{ textAlign: 'center', marginTop: '2rem', color: 'var(--text-muted)', fontSize: '13px' }}>
+              Ask the agent anything about this project.<br />
+              <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                Try: "show the gap report" · "generate missing files" · "trigger the training pipeline"
+              </span>
+            </div>
+          )}
+          {messages.map((m, i) => <Bubble key={i} message={m} />)}
+          {busy && (
+            <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+              {liveSteps.length > 0 || liveThinking
+                ? <StepsPanel steps={liveSteps} thinking={liveThinking} live />
+                : <div style={{ background: 'var(--surface-3)', border: '1px solid var(--border)', borderRadius: 12, padding: '0.6rem 1rem', fontSize: '13px', color: 'var(--text-dim)', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <span className="spinner" /> Thinking…
+                  </div>
+              }
+            </div>
+          )}
+          <div ref={bottomRef} />
+        </div>
+
+        {/* Input */}
+        <div style={{ padding: '0.75rem', borderTop: '1px solid var(--border)', flexShrink: 0 }}>
+          <form onSubmit={send} style={{ display: 'flex', gap: '0.5rem' }}>
+            <input
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              disabled={busy || !projectId}
+              placeholder='e.g. "show the gap report"'
+              className="input"
+              style={{ flex: 1, fontSize: '13px' }}
+            />
+            <button type="submit" disabled={busy || !input.trim() || !projectId} className="btn btn-primary">
+              Send
+            </button>
+          </form>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex h-[calc(100vh-57px)]">

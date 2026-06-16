@@ -19,7 +19,7 @@ evidence:
     role: batch deployment CD
     weight: 30
 deliverables:
-  batch_endpoint_assets: [aml/deployment/batch_endpoint.yml, aml/deployment/batch_deployment.yml]
+  batch_endpoint_assets: [MLpipelines/batch_endpoint.yml, MLpipelines/batch_deployment.yml]
   inference_code: [src/batch_score.py]
   azdo_cd_batch: [azdopipelines/cd-batch.yml]
 validation:

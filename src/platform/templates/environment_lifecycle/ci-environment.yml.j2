@@ -1,16 +1,43 @@
-# Environment lifecycle: build -> dev -> validate -> qa -> validate -> prod
+# Environment lifecycle: build image → push to ACR → register AML env → dev → qa → prod
+#
+# Uses az acr build (via the existing Azure RM service connection) — no separate
+# Docker Registry service connection required. ACR_NAME is a pipeline variable.
 trigger:
   branches: { include: [{{ default_branch }}] }
   paths: { include: [Dockerfile, aml/conda.yml, aml/environment.yml, requirements.txt] }
 
 pool: { vmImage: ubuntu-latest }
 
+variables:
+  IMAGE_REPO: {{ safe_name }}
+  IMAGE_TAG:  $(Build.BuildId)
+
 stages:
-  - stage: BuildAndDev
-    displayName: Build image + Dev environment
+  - stage: BuildAndPush
+    displayName: Build & push image to ACR
+    jobs:
+      - job: build
+        steps:
+          - checkout: self
+          - task: AzureCLI@2
+            displayName: az acr build (no Docker connection needed)
+            inputs:
+              azureSubscription: $(SERVICE_CONNECTION_DEV)
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                az acr build \
+                  --registry $(ACR_NAME) \
+                  --image $(IMAGE_REPO):$(IMAGE_TAG) \
+                  --file Dockerfile .
+
+  - stage: RegisterDev
+    displayName: Register Dev AML environment
+    dependsOn: BuildAndPush
     jobs:
       - job: dev
         steps:
+          - checkout: self
           - task: AzureCLI@2
             displayName: Create Dev AML environment
             inputs:
@@ -18,12 +45,15 @@ stages:
               scriptType: bash
               scriptLocation: inlineScript
               inlineScript: |
-                az ml environment create --file aml/environment.yml \
-                  --resource-group $(RESOURCE_GROUP_DEV) --workspace-name $(WORKSPACE_DEV)
+                az ml environment create \
+                  --file aml/environment.yml \
+                  --set image=$(ACR_NAME).azurecr.io/$(IMAGE_REPO):$(IMAGE_TAG) \
+                  --resource-group $(RESOURCE_GROUP_DEV) \
+                  --workspace-name $(WORKSPACE_DEV)
 
   - stage: PromoteQA
     displayName: Promote to QA (approval-gated)
-    dependsOn: BuildAndDev
+    dependsOn: RegisterDev
     jobs:
       - deployment: qa
         environment: {{ safe_name }}-qa     # AzDO environment with approval check
@@ -39,8 +69,11 @@ stages:
                     scriptType: bash
                     scriptLocation: inlineScript
                     inlineScript: |
-                      az ml environment create --file aml/environment.yml \
-                        --resource-group $(RESOURCE_GROUP_QA) --workspace-name $(WORKSPACE_QA)
+                      az ml environment create \
+                        --file aml/environment.yml \
+                        --set image=$(ACR_NAME).azurecr.io/$(IMAGE_REPO):$(IMAGE_TAG) \
+                        --resource-group $(RESOURCE_GROUP_QA) \
+                        --workspace-name $(WORKSPACE_QA)
 
   - stage: PromoteProd
     displayName: Promote to Prod (approval-gated)
@@ -60,5 +93,8 @@ stages:
                     scriptType: bash
                     scriptLocation: inlineScript
                     inlineScript: |
-                      az ml environment create --file aml/environment.yml \
-                        --resource-group $(RESOURCE_GROUP_PROD) --workspace-name $(WORKSPACE_PROD)
+                      az ml environment create \
+                        --file aml/environment.yml \
+                        --set image=$(ACR_NAME).azurecr.io/$(IMAGE_REPO):$(IMAGE_TAG) \
+                        --resource-group $(RESOURCE_GROUP_PROD) \
+                        --workspace-name $(WORKSPACE_PROD)

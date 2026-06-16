@@ -15,9 +15,9 @@ stages:
               scriptLocation: inlineScript
               inlineScript: |
                 set -e
-                az ml online-endpoint create --file aml/deployment/endpoint.yml \
+                az ml online-endpoint create --file MLpipelines/endpoint.yml \
                   --resource-group $(RESOURCE_GROUP_DEV) --workspace-name $(WORKSPACE_DEV) || true
-                az ml online-deployment create --file aml/deployment/deployment.yml \
+                az ml online-deployment create --file MLpipelines/deployment.yml \
                   --resource-group $(RESOURCE_GROUP_DEV) --workspace-name $(WORKSPACE_DEV) \
                   --all-traffic
 
@@ -39,8 +39,8 @@ stages:
                     scriptLocation: inlineScript
                     inlineScript: |
                       set -e
-                      az ml online-endpoint create --file aml/deployment/endpoint.yml \
+                      az ml online-endpoint create --file MLpipelines/endpoint.yml \
                         --resource-group $(RESOURCE_GROUP_PROD) --workspace-name $(WORKSPACE_PROD) || true
-                      az ml online-deployment create --file aml/deployment/deployment.yml \
+                      az ml online-deployment create --file MLpipelines/deployment.yml \
                         --resource-group $(RESOURCE_GROUP_PROD) --workspace-name $(WORKSPACE_PROD)
                       # shift traffic only after smoke test; previous deployment kept for ops-rollback

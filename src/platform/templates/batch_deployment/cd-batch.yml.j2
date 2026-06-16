@@ -15,9 +15,9 @@ stages:
               scriptLocation: inlineScript
               inlineScript: |
                 set -e
-                az ml batch-endpoint create --file aml/deployment/batch_endpoint.yml \
+                az ml batch-endpoint create --file MLpipelines/batch_endpoint.yml \
                   --resource-group $(RESOURCE_GROUP_DEV) --workspace-name $(WORKSPACE_DEV) || true
-                az ml batch-deployment create --file aml/deployment/batch_deployment.yml \
+                az ml batch-deployment create --file MLpipelines/batch_deployment.yml \
                   --resource-group $(RESOURCE_GROUP_DEV) --workspace-name $(WORKSPACE_DEV)
 
   - stage: DeployProd
@@ -38,7 +38,7 @@ stages:
                     scriptLocation: inlineScript
                     inlineScript: |
                       set -e
-                      az ml batch-endpoint create --file aml/deployment/batch_endpoint.yml \
+                      az ml batch-endpoint create --file MLpipelines/batch_endpoint.yml \
                         --resource-group $(RESOURCE_GROUP_PROD) --workspace-name $(WORKSPACE_PROD) || true
-                      az ml batch-deployment create --file aml/deployment/batch_deployment.yml \
+                      az ml batch-deployment create --file MLpipelines/batch_deployment.yml \
                         --resource-group $(RESOURCE_GROUP_PROD) --workspace-name $(WORKSPACE_PROD)

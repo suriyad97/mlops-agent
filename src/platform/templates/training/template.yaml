@@ -6,8 +6,9 @@ components:
       - { src: evaluate.py.j2, dest: src/evaluate.py }
   aml_training_assets:
     files:
-      - { src: train_component.yml.j2, dest: aml/components/train.yml }
-      - { src: training_pipeline.yml.j2, dest: aml/pipelines/training_pipeline.yml }
+      - { src: train_component.yml.j2, dest: MLpipelines/train.yml }
+      - { src: evaluate_component.yml.j2, dest: MLpipelines/evaluate.yml }
+      - { src: training_pipeline.yml.j2, dest: MLpipelines/training_pipeline.yml }
   azdo_orchestration:
     files:
       - { src: ct-train.yml.j2, dest: azdopipelines/ct-train.yml }

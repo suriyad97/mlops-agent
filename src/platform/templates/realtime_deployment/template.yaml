@@ -2,8 +2,8 @@ capability: realtime_deployment
 components:
   online_endpoint_assets:
     files:
-      - { src: endpoint.yml.j2, dest: aml/deployment/endpoint.yml }
-      - { src: deployment.yml.j2, dest: aml/deployment/deployment.yml }
+      - { src: endpoint.yml.j2, dest: MLpipelines/endpoint.yml }
+      - { src: deployment.yml.j2, dest: MLpipelines/deployment.yml }
   scoring_code:
     files:
       - { src: score.py.j2, dest: src/score.py }

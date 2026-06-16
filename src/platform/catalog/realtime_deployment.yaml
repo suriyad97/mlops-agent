@@ -19,7 +19,7 @@ evidence:
     role: realtime deployment CD
     weight: 30
 deliverables:
-  online_endpoint_assets: [aml/deployment/endpoint.yml, aml/deployment/deployment.yml]
+  online_endpoint_assets: [MLpipelines/endpoint.yml, MLpipelines/deployment.yml]
   scoring_code: [src/score.py]
   azdo_cd_realtime: [azdopipelines/cd-realtime.yml]
 validation:

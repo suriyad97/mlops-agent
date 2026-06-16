@@ -8,15 +8,15 @@ jobs:
   detect_drift:
     type: command
     command: >-
-      python src/monitoring/detect_drift.py
+      python {{ drift_script }}
       --baseline-data ${{ '{{' }}inputs.baseline_data{{ '}}' }}
       --current-data ${{ '{{' }}inputs.current_data{{ '}}' }}
       --output ${{ '{{' }}outputs.drift_report{{ '}}' }}/drift_report.json
-    code: ../../
+    code: ../
     environment: azureml:{{ environment_name }}@latest
     compute: {{ compute_target }}
     inputs:
-      baseline_data: { type: uri_file, path: azureml:baseline_data@latest }
-      current_data: { type: uri_file, path: azureml:current_data@latest }
+      baseline_data: { type: uri_file, path: "{{ baseline_data_path or 'azureml:baseline_data@latest' }}" }
+      current_data: { type: uri_file, path: "{{ current_data_path or 'azureml:current_data@latest' }}" }
     outputs:
       drift_report: { type: uri_folder }

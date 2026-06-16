@@ -217,6 +217,55 @@ def generate(project_id: str, body: GenerateIn | None = None,
         raise HTTPException(500, f"generation failed: {str(exc)[:300]}")
 
 
+@app.get("/api/projects/{project_id}/contract")
+def get_contract(project_id: str, session: Session = Depends(get_session)) -> dict:
+    """The code checklist: detected/declared user-ML-code stages for the endpoint strategy."""
+    project = _get_project(session, project_id)
+    try:
+        return services.get_contract(session, project)
+    except Exception as exc:
+        logger.exception("contract fetch failed")
+        raise HTTPException(500, f"contract fetch failed: {str(exc)[:300]}")
+
+
+class ContractIn(BaseModel):
+    contract: dict
+
+
+@app.put("/api/projects/{project_id}/contract")
+def save_contract(project_id: str, body: ContractIn,
+                  session: Session = Depends(get_session)) -> dict:
+    """Persist the user-confirmed checklist (drives wired/adapter/scaffold at generation)."""
+    project = _get_project(session, project_id)
+    try:
+        return services.save_contract(session, project, body.contract)
+    except Exception as exc:
+        logger.exception("contract save failed")
+        raise HTTPException(400, f"contract save failed: {str(exc)[:300]}")
+
+
+@app.get("/api/projects/{project_id}/requirement-plan")
+def requirement_plan(project_id: str, session: Session = Depends(get_session)) -> dict:
+    """Backward dependency plan for the endpoint strategy: requirement · owner · status."""
+    project = _get_project(session, project_id)
+    try:
+        return services.get_requirement_plan(session, project)
+    except Exception as exc:
+        logger.exception("requirement plan failed")
+        raise HTTPException(500, f"requirement plan failed: {str(exc)[:300]}")
+
+
+@app.get("/api/projects/{project_id}/generation-report")
+def generation_report(project_id: str, session: Session = Depends(get_session)) -> dict:
+    """Latest stored generation report — what was generated, persisted across reloads."""
+    project = _get_project(session, project_id)
+    try:
+        return services.get_generation_report(session, project)
+    except Exception as exc:
+        logger.exception("generation report fetch failed")
+        raise HTTPException(500, f"generation report fetch failed: {str(exc)[:300]}")
+
+
 @app.post("/api/projects/{project_id}/validate")
 def validate(project_id: str, session: Session = Depends(get_session)) -> dict:
     project = _get_project(session, project_id)
@@ -357,6 +406,91 @@ def post_message_stream(thread_id: str, body: ChatIn) -> StreamingResponse:
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+@app.get("/api/projects/{project_id}/infra-check")
+def infra_check(project_id: str, session: Session = Depends(get_session)) -> dict:
+    """Run all six Azure + AzDO prerequisite checks for a project.
+
+    Project profile values are used first (set by auto-discovery), falling back to .env.
+    """
+    from src.app.project_context import activate
+    from src.tools.azure_infra_tools import check_all_prerequisites
+    project = _get_project(session, project_id)
+    activate(project)
+    try:
+        report = check_all_prerequisites(profile_overrides=dict(project.profile or {}))
+        return report.model_dump()
+    except Exception as exc:
+        logger.exception("infra check failed")
+        raise HTTPException(500, f"infra check failed: {str(exc)[:300]}")
+
+
+@app.get("/api/projects/{project_id}/verify-data-paths")
+def verify_data_paths_endpoint(project_id: str, session: Session = Depends(get_session)) -> dict:
+    """Validate the project's configured data-plane paths (format + best-effort blob existence)."""
+    from src.app.project_context import activate
+    from src.tools.data_path_tools import verify_data_paths
+    project = _get_project(session, project_id)
+    activate(project)
+    try:
+        report = verify_data_paths(dict(project.profile or {}))
+        return report.model_dump()
+    except Exception as exc:
+        logger.exception("data path verification failed")
+        raise HTTPException(500, f"data path verification failed: {str(exc)[:300]}")
+
+
+@app.post("/api/projects/{project_id}/infra-discover")
+def infra_discover(project_id: str, session: Session = Depends(get_session)) -> dict:
+    """Auto-discover Azure config from AzDO service connections.
+
+    Saves discovered values to the project profile, then re-runs the infra check
+    using the updated profile so the caller gets fresh results in one round-trip.
+    """
+    from src.app.project_context import activate
+    from src.tools.azure_infra_tools import auto_discover_from_azdo, check_all_prerequisites
+    project = _get_project(session, project_id)
+    activate(project)
+    try:
+        discovered = auto_discover_from_azdo()
+
+        # Persist only the fields that were actually discovered (don't overwrite existing)
+        _KEY_MAP = {
+            "azure_subscription_id": "subscription_id",
+            "azure_resource_group":  "resource_group",
+            "acr_name":              "acr_name",
+            "aml_workspace":         "aml_workspace",
+            "aml_compute_target":    "aml_compute_target",
+        }
+        if discovered.discovered:
+            merged = dict(project.profile or {})
+            for profile_key, disc_field in _KEY_MAP.items():
+                val = getattr(discovered, disc_field, "")
+                if val and profile_key in discovered.discovered:
+                    merged[profile_key] = val
+            project.profile = merged
+            session.commit()
+
+        report = check_all_prerequisites(profile_overrides=dict(project.profile or {}))
+        return {"discovered": discovered.model_dump(), "report": report.model_dump()}
+    except Exception as exc:
+        logger.exception("infra discover failed")
+        raise HTTPException(500, f"infra discover failed: {str(exc)[:300]}")
+
+
+@app.get("/api/projects/{project_id}/pipeline-readiness")
+def pipeline_readiness(project_id: str, session: Session = Depends(get_session)) -> dict:
+    """Check readiness of all pipeline stages in dependency order."""
+    from src.app.project_context import activate
+    from src.tools.pipeline_readiness import check_pipeline_readiness
+    project = _get_project(session, project_id)
+    activate(project)
+    report = check_pipeline_readiness(
+        repo_path=project.local_repo_path or "",
+        profile=dict(project.profile or {}),
+    )
+    return report.model_dump()
 
 
 @app.get("/api/health")

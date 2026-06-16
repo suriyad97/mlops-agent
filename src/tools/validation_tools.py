@@ -5,6 +5,11 @@ import yaml
 
 
 def validate_yaml(content: str) -> Tuple[bool, str]:
+    # Guard non-string input: PyYAML treats a dict/list as a stream and calls .read()
+    # on it, raising "'dict' object has no attribute 'read'" (an AttributeError, NOT a
+    # YAMLError) — which would otherwise escape and crash generation. Reject cleanly.
+    if not isinstance(content, str):
+        return False, f"expected YAML text, got {type(content).__name__}"
     try:
         yaml.safe_load(content)
         return True, ""

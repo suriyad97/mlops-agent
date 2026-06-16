@@ -19,7 +19,7 @@ evidence:
     role: approvals
     weight: 25
 deliverables:
-  registration_mechanism: [aml/components/register.yml]
+  registration_mechanism: [MLpipelines/register.yml]
   promotion_mechanism: [azdopipelines/qa-promote-model.yml]
   approval_gates: [.azuredevops/environments.md]
 validation:

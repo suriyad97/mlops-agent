@@ -215,13 +215,40 @@ def get_default_branch(repo_name: str) -> str:
     return data.get("defaultBranch", "refs/heads/main").replace("refs/heads/", "")
 
 
-def list_branches_for_url(repo_url: str, pat: str) -> List[str]:
-    """List branches using an explicit URL + PAT (no settings required)."""
+def _list_github_branches(repo_url: str, token: str) -> List[str]:
+    """List branches for a GitHub repo using a GitHub PAT/token."""
     from urllib.parse import urlparse
+    parts = [p for p in urlparse(repo_url).path.split("/") if p]
+    if len(parts) < 2:
+        raise ToolError("not a valid GitHub repo URL (expected github.com/owner/repo)")
+    owner, repo = parts[0], parts[1].removesuffix(".git")
+    headers: Dict[str, str] = {"Accept": "application/vnd.github+json"}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    resp = requests.get(
+        f"https://api.github.com/repos/{owner}/{repo}/branches?per_page=100",
+        headers=headers, timeout=30,
+    )
+    if resp.status_code >= 300:
+        raise ToolError(f"GitHub branches API {resp.status_code}: {resp.text[:300]}")
+    return [b["name"] for b in resp.json()]
+
+
+def list_branches_for_url(repo_url: str, pat: str) -> List[str]:
+    """List branches using an explicit URL + PAT. Supports AzDO and GitHub URLs."""
+    from urllib.parse import urlparse
+    hostname = urlparse(repo_url).hostname or ""
+
+    if "github.com" in hostname:
+        return _list_github_branches(repo_url, pat)
+
     parsed = urlparse(repo_url)
     parts = [p for p in parsed.path.split("/") if p]
-    if "dev.azure.com" not in (parsed.hostname or "") or "_git" not in parts:
-        raise ToolError("not a valid Azure DevOps repo URL (expected dev.azure.com/.../org/project/_git/repo)")
+    if "dev.azure.com" not in hostname or "_git" not in parts:
+        raise ToolError(
+            "not a recognised repo URL — expected dev.azure.com/.../org/project/_git/repo "
+            "or github.com/owner/repo"
+        )
     git_idx = parts.index("_git")
     org = parts[0]
     project = parts[git_idx - 1] if git_idx >= 2 else ""

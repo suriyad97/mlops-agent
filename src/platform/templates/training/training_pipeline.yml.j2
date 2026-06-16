@@ -4,12 +4,22 @@ display_name: {{ safe_name }}-training
 experiment_name: {{ experiment_name }}
 
 inputs:
-  training_data: { type: uri_file, path: azureml:training_data@latest }
+  training_data: { type: uri_file, path: "{{ training_data_path or 'azureml:training_data@latest' }}" }
+  # held-out evaluation set; point this at your test split (defaults to the training asset)
+  eval_data: { type: uri_file, path: "{{ eval_data_path or training_data_path or 'azureml:training_data@latest' }}" }
 
 jobs:
   train:
     type: command
-    component: ../components/train.yml
+    component: ./train.yml
     inputs:
       training_data: ${{ '{{' }}parent.inputs.training_data{{ '}}' }}
+    compute: {{ compute_target }}
+
+  evaluate:
+    type: command
+    component: ./evaluate.yml
+    inputs:
+      model_input: ${{ '{{' }}parent.jobs.train.outputs.model_output{{ '}}' }}
+      eval_data: ${{ '{{' }}parent.inputs.eval_data{{ '}}' }}
     compute: {{ compute_target }}

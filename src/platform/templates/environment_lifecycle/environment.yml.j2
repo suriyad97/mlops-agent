@@ -1,6 +1,11 @@
 $schema: https://azuremlschemas.azureedge.net/latest/environment.schema.json
 name: {{ environment_name }}
 version: "1"
+{% if acr_name %}
+# Image built by ci-environment.yml via az acr build — tag overridden at runtime with --set
+image: {{ acr_name }}.azurecr.io/{{ safe_name }}:latest
+{% else %}
 image: mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu22.04:latest
 conda_file: conda.yml
+{% endif %}
 description: Training/serving environment for {{ project_name }}

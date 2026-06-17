@@ -21,7 +21,7 @@ python -m uvicorn src.app.main:app --port 8000
 cd web && npm install && npm run dev   # http://localhost:5173
 ```
 
-1. **Projects page** — register a project (AzDO repo URL + PAT, stored encrypted), hit **Scan**
+1. **Projects page** — register a project by providing an AzDO repo URL (with PAT) **OR** a local folder path (PAT bypass for local testing), hit **Scan**
 2. Review/edit the auto-inferred profile (project type, target, metrics, endpoint, drift)
 3. **Chat page** — threads are scoped per project (dropdown). Drive the workflow:
    - "evaluate the capabilities" → maturity scores + gap report
@@ -191,6 +191,9 @@ Key properties:
 - **Validate-local-first** — AzDO `previewRun` parses pipelines server-side with
   zero runs created; org-setup tasks (approval environments, service connections)
   are reported separately from file defects
+- **Conversational guardrails** — A pre-flight topic classifier checks messages (with
+  recent context) to strictly block non-ML/Data queries while naturally permitting 
+  affirmations (e.g. "yes", "proceed") in context.
 - **Observability** — Arize Phoenix traces every graph node and LLM call
   (`python -m phoenix.server.main serve`, http://localhost:6006)
 

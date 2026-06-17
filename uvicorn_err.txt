@@ -1,0 +1,322 @@
+INFO:     Started server process [8012]
+INFO:     Waiting for application startup.
+OpenTelemetry Tracing Details
+|  Phoenix Project: repo-remediation-agent
+|  Span Processor: BatchSpanProcessor
+|  Collector Endpoint: http://localhost:6006/v1/traces
+|  Transport: HTTP + protobuf
+|  Transport Headers: {}
+|  
+|  Using a default SpanProcessor. `add_span_processor` will overwrite this default.
+|  
+|  `register` has set this TracerProvider as the global OpenTelemetry default.
+|  To disable this behavior, call `register` with `set_global_tracer_provider=False`.
+
+{"ts": "2026-06-16T17:46:41.610436+00:00", "level": "INFO", "logger": "src.shared.observability", "message": "phoenix tracing active: project=repo-remediation-agent endpoint=http://localhost:6006/v1/traces"}
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:54800 - "GET /api/projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59923 - "GET /api/projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59924 - "POST /api/projects/e639033cfcd74324/threads HTTP/1.1" 200 OK
+{"ts": "2026-06-16T17:47:04.180929+00:00", "level": "INFO", "logger": "src.api.chat_agent", "message": "chat tool=set_pipeline_parameter"}
+INFO:     127.0.0.1:59925 - "POST /api/threads/7ef69aae4d634341/messages HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55647 - "GET /api/projects/e639033cfcd74324 HTTP/1.1" 405 Method Not Allowed
+INFO:     127.0.0.1:55648 - "DELETE /api/threads/7ef69aae4d634341 HTTP/1.1" 200 OK
+Transient error HTTPConnectionPool(host='localhost', port=6006): Max retries exceeded with url: /v1/traces (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x0000025DC7A62B70>: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it')) encountered while exporting span batch, retrying in 1.03s.
+Failed to export span batch due to timeout, max retries or shutdown.
+Transient error HTTPConnectionPool(host='localhost', port=6006): Max retries exceeded with url: /v1/traces (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x0000025DC8AEA2D0>: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it')) encountered while exporting span batch, retrying in 0.95s.
+Failed to export span batch due to timeout, max retries or shutdown.
+INFO:     127.0.0.1:52840 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52839 - "GET /api/projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52843 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52844 - "GET /api/projects HTTP/1.1" 200 OK
+Incomplete environment configuration. These variables are set: AZURE_TENANT_ID
+Class WorkspaceHubOperations: This is an experimental class, and may change at any time. Please see https://aka.ms/azuremlexperimental for more information.
+Incomplete environment configuration. These variables are set: AZURE_TENANT_ID
+INFO:     127.0.0.1:52846 - "GET /api/projects/e639033cfcd74324/infra-check HTTP/1.1" 200 OK
+Incomplete environment configuration. These variables are set: AZURE_TENANT_ID
+Incomplete environment configuration. These variables are set: AZURE_TENANT_ID
+INFO:     127.0.0.1:65146 - "GET /api/projects/e639033cfcd74324/infra-check HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51360 - "GET /api/projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64250 - "GET /api/projects/e639033cfcd74324/contract HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53104 - "GET /api/projects/e639033cfcd74324/contract HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52528 - "GET /api/projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52527 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52532 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52531 - "GET /api/projects HTTP/1.1" 200 OK
+Incomplete environment configuration. These variables are set: AZURE_TENANT_ID
+INFO:     127.0.0.1:63356 - "GET /api/projects/e639033cfcd74324/contract HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54033 - "GET /api/projects/e639033cfcd74324/contract HTTP/1.1" 200 OK
+Incomplete environment configuration. These variables are set: AZURE_TENANT_ID
+INFO:     127.0.0.1:55082 - "GET /api/projects/e639033cfcd74324/generation-report HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62990 - "GET /api/projects/e639033cfcd74324/generation-report HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63350 - "GET /api/projects/e639033cfcd74324/infra-check HTTP/1.1" 200 OK
+Incomplete environment configuration. These variables are set: AZURE_TENANT_ID
+Incomplete environment configuration. These variables are set: AZURE_TENANT_ID
+INFO:     127.0.0.1:59400 - "GET /api/projects/e639033cfcd74324/infra-check HTTP/1.1" 200 OK
+Incomplete environment configuration. These variables are set: AZURE_TENANT_ID
+Incomplete environment configuration. These variables are set: AZURE_TENANT_ID
+INFO:     127.0.0.1:55760 - "GET /api/projects/e639033cfcd74324/infra-check HTTP/1.1" 200 OK
+Incomplete environment configuration. These variables are set: AZURE_TENANT_ID
+Incomplete environment configuration. These variables are set: AZURE_TENANT_ID
+INFO:     127.0.0.1:51922 - "GET /api/projects/e639033cfcd74324/infra-check HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51452 - "GET /api/projects/e639033cfcd74324/contract HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53181 - "GET /api/projects/e639033cfcd74324/contract HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54828 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54829 - "GET /api/projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54832 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54834 - "GET /api/projects HTTP/1.1" 200 OK
+Incomplete environment configuration. These variables are set: AZURE_TENANT_ID
+DefaultAzureCredential failed to retrieve a token from the included credentials.
+Attempted credentials:
+	EnvironmentCredential: EnvironmentCredential authentication unavailable. Environment variables are not fully configured.
+Visit https://aka.ms/azsdk/python/identity/environmentcredential/troubleshoot to troubleshoot this issue.
+	ManagedIdentityCredential: ManagedIdentityCredential authentication unavailable, no response from the IMDS endpoint.
+	SharedTokenCacheCredential: SharedTokenCacheCredential authentication unavailable. No account
+matching the specified tenant: 00779135-8682-4393-8a51-f3af22ad042c was found in the cache.
+	AzureCliCredential: ERROR: The command failed with an unexpected error. Here is the traceback:
+ERROR: HTTPSConnectionPool(host='login.microsoftonline.com', port=443): Max retries exceeded with url: /common/discovery/instance?api-version=1.1&authorization_endpoint=https%3A%2F%2Flogin.microsoftonline.com%2Fcommon%2Foauth2%2Fauthorize (Caused by NameResolutionError("HTTPSConnection(host='login.microsoftonline.com', port=443): Failed to resolve 'login.microsoftonline.com' ([Errno 11001] getaddrinfo failed)"))
+Traceback (most recent call last):
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\urllib3/connection.py", line 204, in _new_conn
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\urllib3/util/connection.py", line 60, in create_connection
+  File "socket.py", line 977, in getaddrinfo
+socket.gaierror: [Errno 11001] getaddrinfo failed
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\urllib3/connectionpool.py", line 787, in urlopen
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\urllib3/connectionpool.py", line 488, in _make_request
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\urllib3/connectionpool.py", line 464, in _make_request
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\urllib3/connectionpool.py", line 1093, in _validate_conn
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\urllib3/connection.py", line 759, in connect
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\urllib3/connection.py", line 211, in _new_conn
+urllib3.exceptions.NameResolutionError: HTTPSConnection(host='login.microsoftonline.com', port=443): Failed to resolve 'login.microsoftonline.com' ([Errno 11001] getaddrinfo failed)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\requests/adapters.py", line 645, in send
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\urllib3/connectionpool.py", line 871, in urlopen
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\urllib3/connectionpool.py", line 841, in urlopen
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\urllib3/util/retry.py", line 535, in increment
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='login.microsoftonline.com', port=443): Max retries exceeded with url: /common/discovery/instance?api-version=1.1&authorization_endpoint=https%3A%2F%2Flogin.microsoftonline.com%2Fcommon%2Foauth2%2Fauthorize (Caused by NameResolutionError("HTTPSConnection(host='login.microsoftonline.com', port=443): Failed to resolve 'login.microsoftonline.com' ([Errno 11001] getaddrinfo failed)"))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\knack/cli.py", line 233, in invoke
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\azure/cli/core/commands/__init__.py", line 677, in execute
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\azure/cli/core/commands/__init__.py", line 820, in _run_jobs_serially
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\azure/cli/core/commands/__init__.py", line 789, in _run_job
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\azure/cli/core/commands/__init__.py", line 335, in __call__
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\azure/cli/core/commands/command_operation.py", line 120, in handler
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\azure/cli/command_modules/profile/custom.py", line 89, in get_access_token
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\azure/cli/core/_profile.py", line 418, in get_raw_token
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\azure/cli/core/auth/msal_credentials.py", line 55, in acquire_token
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\msal/application.py", line 1495, in acquire_token_silent_with_error
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\msal/application.py", line 1527, in _acquire_token_silent_with_error
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\msal/application.py", line 1335, in _get_authority_aliases
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\msal/application.py", line 1314, in _get_instance_metadata
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\msal/individual_cache.py", line 273, in wrapper
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\msal/throttled_http_client.py", line 99, in get
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\requests/sessions.py", line 605, in get
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\requests/sessions.py", line 592, in request
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\requests/sessions.py", line 706, in send
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\requests/adapters.py", line 678, in send
+requests.exceptions.ConnectionError: HTTPSConnectionPool(host='login.microsoftonline.com', port=443): Max retries exceeded with url: /common/discovery/instance?api-version=1.1&authorization_endpoint=https%3A%2F%2Flogin.microsoftonline.com%2Fcommon%2Foauth2%2Fauthorize (Caused by NameResolutionError("HTTPSConnection(host='login.microsoftonline.com', port=443): Failed to resolve 'login.microsoftonline.com' ([Errno 11001] getaddrinfo failed)"))
+To check existing issues, please visit: https://github.com/Azure/azure-cli/issues
+
+To mitigate this issue, please refer to the troubleshooting guidelines here at https://aka.ms/azsdk/python/identity/defaultazurecredential/troubleshoot.
+Incomplete environment configuration. These variables are set: AZURE_TENANT_ID
+DefaultAzureCredential failed to retrieve a token from the included credentials.
+Attempted credentials:
+	EnvironmentCredential: EnvironmentCredential authentication unavailable. Environment variables are not fully configured.
+Visit https://aka.ms/azsdk/python/identity/environmentcredential/troubleshoot to troubleshoot this issue.
+	ManagedIdentityCredential: ManagedIdentityCredential authentication unavailable, no response from the IMDS endpoint.
+	SharedTokenCacheCredential: SharedTokenCacheCredential authentication unavailable. No account
+matching the specified tenant: 00779135-8682-4393-8a51-f3af22ad042c was found in the cache.
+	AzureCliCredential: ERROR: The command failed with an unexpected error. Here is the traceback:
+ERROR: HTTPSConnectionPool(host='login.microsoftonline.com', port=443): Max retries exceeded with url: /common/discovery/instance?api-version=1.1&authorization_endpoint=https%3A%2F%2Flogin.microsoftonline.com%2Fcommon%2Foauth2%2Fauthorize (Caused by NameResolutionError("HTTPSConnection(host='login.microsoftonline.com', port=443): Failed to resolve 'login.microsoftonline.com' ([Errno 11001] getaddrinfo failed)"))
+Traceback (most recent call last):
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\urllib3/connection.py", line 204, in _new_conn
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\urllib3/util/connection.py", line 60, in create_connection
+  File "socket.py", line 977, in getaddrinfo
+socket.gaierror: [Errno 11001] getaddrinfo failed
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\urllib3/connectionpool.py", line 787, in urlopen
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\urllib3/connectionpool.py", line 488, in _make_request
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\urllib3/connectionpool.py", line 464, in _make_request
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\urllib3/connectionpool.py", line 1093, in _validate_conn
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\urllib3/connection.py", line 759, in connect
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\urllib3/connection.py", line 211, in _new_conn
+urllib3.exceptions.NameResolutionError: HTTPSConnection(host='login.microsoftonline.com', port=443): Failed to resolve 'login.microsoftonline.com' ([Errno 11001] getaddrinfo failed)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\requests/adapters.py", line 645, in send
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\urllib3/connectionpool.py", line 871, in urlopen
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\urllib3/connectionpool.py", line 841, in urlopen
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\urllib3/util/retry.py", line 535, in increment
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='login.microsoftonline.com', port=443): Max retries exceeded with url: /common/discovery/instance?api-version=1.1&authorization_endpoint=https%3A%2F%2Flogin.microsoftonline.com%2Fcommon%2Foauth2%2Fauthorize (Caused by NameResolutionError("HTTPSConnection(host='login.microsoftonline.com', port=443): Failed to resolve 'login.microsoftonline.com' ([Errno 11001] getaddrinfo failed)"))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\knack/cli.py", line 233, in invoke
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\azure/cli/core/commands/__init__.py", line 677, in execute
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\azure/cli/core/commands/__init__.py", line 820, in _run_jobs_serially
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\azure/cli/core/commands/__init__.py", line 789, in _run_job
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\azure/cli/core/commands/__init__.py", line 335, in __call__
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\azure/cli/core/commands/command_operation.py", line 120, in handler
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\azure/cli/command_modules/profile/custom.py", line 89, in get_access_token
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\azure/cli/core/_profile.py", line 418, in get_raw_token
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\azure/cli/core/auth/msal_credentials.py", line 55, in acquire_token
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\msal/application.py", line 1495, in acquire_token_silent_with_error
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\msal/application.py", line 1527, in _acquire_token_silent_with_error
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\msal/application.py", line 1335, in _get_authority_aliases
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\msal/application.py", line 1314, in _get_instance_metadata
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\msal/individual_cache.py", line 273, in wrapper
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\msal/throttled_http_client.py", line 99, in get
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\requests/sessions.py", line 605, in get
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\requests/sessions.py", line 592, in request
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\requests/sessions.py", line 706, in send
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\requests/adapters.py", line 678, in send
+requests.exceptions.ConnectionError: HTTPSConnectionPool(host='login.microsoftonline.com', port=443): Max retries exceeded with url: /common/discovery/instance?api-version=1.1&authorization_endpoint=https%3A%2F%2Flogin.microsoftonline.com%2Fcommon%2Foauth2%2Fauthorize (Caused by NameResolutionError("HTTPSConnection(host='login.microsoftonline.com', port=443): Failed to resolve 'login.microsoftonline.com' ([Errno 11001] getaddrinfo failed)"))
+To check existing issues, please visit: https://github.com/Azure/azure-cli/issues
+
+To mitigate this issue, please refer to the troubleshooting guidelines here at https://aka.ms/azsdk/python/identity/defaultazurecredential/troubleshoot.
+INFO:     127.0.0.1:58704 - "GET /api/projects/e639033cfcd74324/infra-check HTTP/1.1" 200 OK
+Incomplete environment configuration. These variables are set: AZURE_TENANT_ID
+DefaultAzureCredential failed to retrieve a token from the included credentials.
+Attempted credentials:
+	EnvironmentCredential: EnvironmentCredential authentication unavailable. Environment variables are not fully configured.
+Visit https://aka.ms/azsdk/python/identity/environmentcredential/troubleshoot to troubleshoot this issue.
+	ManagedIdentityCredential: ManagedIdentityCredential authentication unavailable, no response from the IMDS endpoint.
+	SharedTokenCacheCredential: SharedTokenCacheCredential authentication unavailable. No account
+matching the specified tenant: 00779135-8682-4393-8a51-f3af22ad042c was found in the cache.
+	AzureCliCredential: ERROR: The command failed with an unexpected error. Here is the traceback:
+ERROR: HTTPSConnectionPool(host='login.microsoftonline.com', port=443): Max retries exceeded with url: /common/discovery/instance?api-version=1.1&authorization_endpoint=https%3A%2F%2Flogin.microsoftonline.com%2Fcommon%2Foauth2%2Fauthorize (Caused by NameResolutionError("HTTPSConnection(host='login.microsoftonline.com', port=443): Failed to resolve 'login.microsoftonline.com' ([Errno 11001] getaddrinfo failed)"))
+Traceback (most recent call last):
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\urllib3/connection.py", line 204, in _new_conn
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\urllib3/util/connection.py", line 60, in create_connection
+  File "socket.py", line 977, in getaddrinfo
+socket.gaierror: [Errno 11001] getaddrinfo failed
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\urllib3/connectionpool.py", line 787, in urlopen
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\urllib3/connectionpool.py", line 488, in _make_request
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\urllib3/connectionpool.py", line 464, in _make_request
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\urllib3/connectionpool.py", line 1093, in _validate_conn
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\urllib3/connection.py", line 759, in connect
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\urllib3/connection.py", line 211, in _new_conn
+urllib3.exceptions.NameResolutionError: HTTPSConnection(host='login.microsoftonline.com', port=443): Failed to resolve 'login.microsoftonline.com' ([Errno 11001] getaddrinfo failed)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\requests/adapters.py", line 645, in send
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\urllib3/connectionpool.py", line 871, in urlopen
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\urllib3/connectionpool.py", line 841, in urlopen
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\urllib3/util/retry.py", line 535, in increment
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='login.microsoftonline.com', port=443): Max retries exceeded with url: /common/discovery/instance?api-version=1.1&authorization_endpoint=https%3A%2F%2Flogin.microsoftonline.com%2Fcommon%2Foauth2%2Fauthorize (Caused by NameResolutionError("HTTPSConnection(host='login.microsoftonline.com', port=443): Failed to resolve 'login.microsoftonline.com' ([Errno 11001] getaddrinfo failed)"))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\knack/cli.py", line 233, in invoke
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\azure/cli/core/commands/__init__.py", line 677, in execute
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\azure/cli/core/commands/__init__.py", line 820, in _run_jobs_serially
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\azure/cli/core/commands/__init__.py", line 789, in _run_job
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\azure/cli/core/commands/__init__.py", line 335, in __call__
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\azure/cli/core/commands/command_operation.py", line 120, in handler
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\azure/cli/command_modules/profile/custom.py", line 89, in get_access_token
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\azure/cli/core/_profile.py", line 418, in get_raw_token
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\azure/cli/core/auth/msal_credentials.py", line 55, in acquire_token
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\msal/application.py", line 1495, in acquire_token_silent_with_error
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\msal/application.py", line 1527, in _acquire_token_silent_with_error
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\msal/application.py", line 1335, in _get_authority_aliases
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\msal/application.py", line 1314, in _get_instance_metadata
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\msal/individual_cache.py", line 273, in wrapper
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\msal/throttled_http_client.py", line 99, in get
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\requests/sessions.py", line 605, in get
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\requests/sessions.py", line 592, in request
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\requests/sessions.py", line 706, in send
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\requests/adapters.py", line 678, in send
+requests.exceptions.ConnectionError: HTTPSConnectionPool(host='login.microsoftonline.com', port=443): Max retries exceeded with url: /common/discovery/instance?api-version=1.1&authorization_endpoint=https%3A%2F%2Flogin.microsoftonline.com%2Fcommon%2Foauth2%2Fauthorize (Caused by NameResolutionError("HTTPSConnection(host='login.microsoftonline.com', port=443): Failed to resolve 'login.microsoftonline.com' ([Errno 11001] getaddrinfo failed)"))
+To check existing issues, please visit: https://github.com/Azure/azure-cli/issues
+
+To mitigate this issue, please refer to the troubleshooting guidelines here at https://aka.ms/azsdk/python/identity/defaultazurecredential/troubleshoot.
+Incomplete environment configuration. These variables are set: AZURE_TENANT_ID
+DefaultAzureCredential failed to retrieve a token from the included credentials.
+Attempted credentials:
+	EnvironmentCredential: EnvironmentCredential authentication unavailable. Environment variables are not fully configured.
+Visit https://aka.ms/azsdk/python/identity/environmentcredential/troubleshoot to troubleshoot this issue.
+	ManagedIdentityCredential: ManagedIdentityCredential authentication unavailable, no response from the IMDS endpoint.
+	SharedTokenCacheCredential: SharedTokenCacheCredential authentication unavailable. No account
+matching the specified tenant: 00779135-8682-4393-8a51-f3af22ad042c was found in the cache.
+	AzureCliCredential: ERROR: The command failed with an unexpected error. Here is the traceback:
+ERROR: HTTPSConnectionPool(host='login.microsoftonline.com', port=443): Max retries exceeded with url: /common/discovery/instance?api-version=1.1&authorization_endpoint=https%3A%2F%2Flogin.microsoftonline.com%2Fcommon%2Foauth2%2Fauthorize (Caused by NameResolutionError("HTTPSConnection(host='login.microsoftonline.com', port=443): Failed to resolve 'login.microsoftonline.com' ([Errno 11001] getaddrinfo failed)"))
+Traceback (most recent call last):
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\urllib3/connection.py", line 204, in _new_conn
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\urllib3/util/connection.py", line 60, in create_connection
+  File "socket.py", line 977, in getaddrinfo
+socket.gaierror: [Errno 11001] getaddrinfo failed
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\urllib3/connectionpool.py", line 787, in urlopen
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\urllib3/connectionpool.py", line 488, in _make_request
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\urllib3/connectionpool.py", line 464, in _make_request
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\urllib3/connectionpool.py", line 1093, in _validate_conn
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\urllib3/connection.py", line 759, in connect
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\urllib3/connection.py", line 211, in _new_conn
+urllib3.exceptions.NameResolutionError: HTTPSConnection(host='login.microsoftonline.com', port=443): Failed to resolve 'login.microsoftonline.com' ([Errno 11001] getaddrinfo failed)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\requests/adapters.py", line 645, in send
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\urllib3/connectionpool.py", line 871, in urlopen
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\urllib3/connectionpool.py", line 841, in urlopen
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\urllib3/util/retry.py", line 535, in increment
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='login.microsoftonline.com', port=443): Max retries exceeded with url: /common/discovery/instance?api-version=1.1&authorization_endpoint=https%3A%2F%2Flogin.microsoftonline.com%2Fcommon%2Foauth2%2Fauthorize (Caused by NameResolutionError("HTTPSConnection(host='login.microsoftonline.com', port=443): Failed to resolve 'login.microsoftonline.com' ([Errno 11001] getaddrinfo failed)"))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\knack/cli.py", line 233, in invoke
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\azure/cli/core/commands/__init__.py", line 677, in execute
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\azure/cli/core/commands/__init__.py", line 820, in _run_jobs_serially
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\azure/cli/core/commands/__init__.py", line 789, in _run_job
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\azure/cli/core/commands/__init__.py", line 335, in __call__
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\azure/cli/core/commands/command_operation.py", line 120, in handler
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\azure/cli/command_modules/profile/custom.py", line 89, in get_access_token
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\azure/cli/core/_profile.py", line 418, in get_raw_token
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\azure/cli/core/auth/msal_credentials.py", line 55, in acquire_token
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\msal/application.py", line 1495, in acquire_token_silent_with_error
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\msal/application.py", line 1527, in _acquire_token_silent_with_error
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\msal/application.py", line 1335, in _get_authority_aliases
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\msal/application.py", line 1314, in _get_instance_metadata
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\msal/individual_cache.py", line 273, in wrapper
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\msal/throttled_http_client.py", line 99, in get
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\requests/sessions.py", line 605, in get
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\requests/sessions.py", line 592, in request
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\requests/sessions.py", line 706, in send
+  File "D:\a\_work\1\s\build_scripts\windows\artifacts\cli\Lib\site-packages\requests/adapters.py", line 678, in send
+requests.exceptions.ConnectionError: HTTPSConnectionPool(host='login.microsoftonline.com', port=443): Max retries exceeded with url: /common/discovery/instance?api-version=1.1&authorization_endpoint=https%3A%2F%2Flogin.microsoftonline.com%2Fcommon%2Foauth2%2Fauthorize (Caused by NameResolutionError("HTTPSConnection(host='login.microsoftonline.com', port=443): Failed to resolve 'login.microsoftonline.com' ([Errno 11001] getaddrinfo failed)"))
+To check existing issues, please visit: https://github.com/Azure/azure-cli/issues
+
+To mitigate this issue, please refer to the troubleshooting guidelines here at https://aka.ms/azsdk/python/identity/defaultazurecredential/troubleshoot.
+INFO:     127.0.0.1:64764 - "GET /api/projects/e639033cfcd74324/infra-check HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58567 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58568 - "GET /api/projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58571 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58572 - "GET /api/projects HTTP/1.1" 200 OK

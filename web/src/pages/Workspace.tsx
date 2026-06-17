@@ -36,7 +36,7 @@ const STEPS = [
   { n: 2, label: 'Scan',       sub: 'Build graph' },
   { n: 3, label: 'Profile',    sub: 'Metrics & targets' },
   { n: 4, label: 'Verify',     sub: 'Script sign-off' },
-  { n: 5, label: 'Generate',   sub: 'Fill gaps' },
+  { n: 5, label: 'Build',      sub: 'Fill gaps' },
   { n: 6, label: 'Validate',   sub: 'Test locally' },
   { n: 7, label: 'Commit',     sub: 'Ship it' },
 ]

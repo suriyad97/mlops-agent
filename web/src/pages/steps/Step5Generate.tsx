@@ -375,20 +375,20 @@ export default function Step5Generate({ project, onGenerated }: Props) {
     <div className="step-card-wide">
       <div className="step-header">
         <div className="step-number">Step 5 of 7</div>
-        <h2 className="step-title">Generate missing pipelines</h2>
+        <h2 className="step-title">Build missing pipelines</h2>
         <p className="step-desc">
-          The platform generates all missing MLOps pipeline files, AML assets, and Python scripts
+          The platform builds all missing MLOps pipeline files, AML assets, and Python scripts
           based on your profile and code checklist. Your existing source code is <strong>never modified</strong>.
         </p>
       </div>
 
-      {/* Generate CTA */}
+      {/* Build CTA */}
       {!report && (
         <>
           {alreadyGenerated && (
             <div className="info-box info-box-accent" style={{ marginBottom: '1.5rem' }}>
-              ✓ Pipelines were previously generated (stage: <strong>{project.stage}</strong>).
-              Re-generate to pick up profile changes.
+              ✓ Pipelines were previously built (stage: <strong>{project.stage}</strong>).
+              Re-build to pick up profile changes.
             </div>
           )}
           <div style={{ textAlign: 'center', padding: '2.5rem 0' }}>
@@ -400,8 +400,8 @@ export default function Step5Generate({ project, onGenerated }: Props) {
               style={{ minWidth: 280, fontSize: '15px', padding: '0.9rem 2.2rem', borderRadius: 'var(--radius)' }}
             >
               {generating
-                ? <><span className="spinner" style={{ width: 18, height: 18 }} /> Generating pipelines…</>
-                : '⚡ Generate Missing Pipelines'}
+                ? <><span className="spinner" style={{ width: 18, height: 18 }} /> Building pipelines…</>
+                : '⚡ Build Missing Pipelines'}
             </button>
             <p style={{ marginTop: '0.85rem', fontSize: '12px', color: 'var(--text-muted)' }}>
               Files are written to your local working tree only — nothing is committed until Step 7.
@@ -424,7 +424,7 @@ export default function Step5Generate({ project, onGenerated }: Props) {
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <span style={{ fontSize: '22px' }}>✅</span>
               <div>
-                <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--success)' }}>Generation complete</div>
+                <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--success)' }}>Build complete</div>
                 <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{report.summary}</div>
               </div>
             </div>
@@ -448,7 +448,7 @@ export default function Step5Generate({ project, onGenerated }: Props) {
           {report.updated_files && report.updated_files.length > 0 && (
             <div className="info-box info-box-accent" style={{ marginBottom: '1.25rem', fontSize: '12px' }}>
               ↻ <strong>{report.created_files?.length ?? 0}</strong> file(s) newly created · <strong>{report.updated_files.length}</strong> already
-              existed and were overwritten with the standard version (idempotent — re-generating is safe).
+              existed and were overwritten with the standard version (idempotent — re-building is safe).
             </div>
           )}
 
@@ -485,7 +485,7 @@ export default function Step5Generate({ project, onGenerated }: Props) {
               Proceed to Validate →
             </button>
             <button className="btn" onClick={generate} disabled={generating}>
-              {generating ? <><span className="spinner" /> Re-generating…</> : '↺ Re-generate'}
+              {generating ? <><span className="spinner" /> Re-building…</> : '↺ Re-build'}
             </button>
           </div>
         </>

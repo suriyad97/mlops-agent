@@ -1,11 +1,21 @@
-"""Evaluate {{ model_name }} on held-out data."""
+"""Evaluate {{ model_name }} on held-out data, with a registration gate."""
 import argparse
 import json
+import sys
 from pathlib import Path
 
 import mlflow
 import pandas as pd
 from sklearn import metrics as skm
+
+# Minimum primary metric required to register the model — tunable per project
+# (edit in chat: "set register_threshold to 0.85"). 0 means always register.
+REGISTER_THRESHOLD = {{ register_threshold }}
+{% if project_type in ("binary_classification", "multiclass_classification") -%}
+PRIMARY_METRIC = "accuracy"
+{%- else -%}
+PRIMARY_METRIC = "r2"
+{%- endif %}
 
 
 def evaluate(model_dir: str, data_path: str, output_path: str) -> dict:
@@ -39,5 +49,15 @@ if __name__ == "__main__":
     parser.add_argument("--model-dir", required=True)
     parser.add_argument("--data-path", required=True)
     parser.add_argument("--output", default="outputs/metrics.json")
+    parser.add_argument("--register-threshold", type=float, default=REGISTER_THRESHOLD)
     args = parser.parse_args()
-    print(evaluate(args.model_dir, args.data_path, args.output))
+    results = evaluate(args.model_dir, args.data_path, args.output)
+    print(results)
+
+    # Registration gate: fail the step (and thus block model registration) when the
+    # primary metric is below the threshold. threshold = 0 always passes.
+    primary = results.get(PRIMARY_METRIC, 0.0)
+    if args.register_threshold and primary < args.register_threshold:
+        print(f"❌ {PRIMARY_METRIC}={primary:.4f} < register threshold {args.register_threshold} — blocking registration")
+        sys.exit(1)
+    print(f"✓ {PRIMARY_METRIC}={primary:.4f} ≥ register threshold {args.register_threshold} — eligible to register")

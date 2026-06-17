@@ -85,6 +85,17 @@ def create_branch(repo_path: str, branch_name: str) -> str:
 def current_branch(repo_path: str) -> str:
     return Repo(repo_path).active_branch.name
 
+def list_local_branches(repo_path: str) -> List[str]:
+    try:
+        repo = Repo(repo_path)
+        return [head.name for head in repo.heads]
+    except InvalidGitRepositoryError:
+        return []
+    except Exception as exc:
+        logger.error(f"Failed to list local branches for {repo_path}: {exc}")
+        return []
+
+
 
 def git_commit(repo_path: str, relative_paths: List[str], message: str) -> str:
     repo = Repo(repo_path)

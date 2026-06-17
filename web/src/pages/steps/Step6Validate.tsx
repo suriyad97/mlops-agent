@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { api, type InfraReport, type DiscoveredConfig, type Project } from '../../api'
+import { api, type AzureInventory, type InfraReport, type DiscoveredConfig, type Project } from '../../api'
 
 interface Props {
   project: Project
@@ -77,6 +77,18 @@ export default function Step6Validate({ project, onValidated }: Props) {
     Object.fromEntries(DATA_PATH_FIELDS.map(f => [f.key, dp0[f.key] ?? ''])),
   )
 
+  // ── Per-environment mapping (dev/qa/prod each its own RG + workspace) ──
+  const ec0 = (project.profile as Record<string, unknown>).env_config as Record<string, Record<string, string>> ?? {}
+  const [envOpen, setEnvOpen] = useState(false)
+  const [inv, setInv] = useState<AzureInventory | null>(null)
+  const [invLoading, setInvLoading] = useState(false)
+  const [savingEnv, setSavingEnv] = useState(false)
+  const [envCfg, setEnvCfg] = useState<Record<string, Record<string, string>>>({
+    dev:  { resource_group: ec0.dev?.resource_group ?? '',  workspace: ec0.dev?.workspace ?? '',  service_connection: ec0.dev?.service_connection ?? '' },
+    qa:   { resource_group: ec0.qa?.resource_group ?? '',   workspace: ec0.qa?.workspace ?? '',   service_connection: ec0.qa?.service_connection ?? '' },
+    prod: { resource_group: ec0.prod?.resource_group ?? '', workspace: ec0.prod?.workspace ?? '', service_connection: ec0.prod?.service_connection ?? '' },
+  })
+
   // ── Runner state ──
   const [status, setStatus] = useState<Record<string, StageStatus>>(
     Object.fromEntries(stages.map((s, i) => [s.key, i === 0 ? 'active' : 'todo'])),
@@ -111,6 +123,25 @@ export default function Step6Validate({ project, onValidated }: Props) {
       await api.patchProfile(project.id, { data_paths })
       refreshInfra()   // infra check now includes data-path readiness rows
     } catch (e) { setError((e as Error).message) } finally { setSavingPaths(false) }
+  }
+
+  async function loadInventory() {
+    setEnvOpen(o => !o)
+    if (inv || invLoading) return
+    setInvLoading(true); setError('')
+    try {
+      setInv(await api.getAzureInventory(project.id))
+    } catch (e) { setError((e as Error).message) } finally { setInvLoading(false) }
+  }
+  function setEnvField(env: string, key: string, v: string) {
+    setEnvCfg(prev => ({ ...prev, [env]: { ...prev[env], [key]: v } }))
+  }
+  async function saveEnvConfig() {
+    setSavingEnv(true); setError('')
+    try {
+      await api.patchProfile(project.id, { env_config: envCfg })
+      refreshInfra()
+    } catch (e) { setError((e as Error).message) } finally { setSavingEnv(false) }
   }
 
   function advance(key: string) {
@@ -162,62 +193,68 @@ export default function Step6Validate({ project, onValidated }: Props) {
 
       {error && <div className="info-box info-box-danger" style={{ marginBottom: '1rem' }}>{error}</div>}
 
-      {/* ── Infrastructure prerequisites (incl. data paths) ─────────────── */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-        <div className="section-label" style={{ marginBottom: 0 }}>Infrastructure prerequisites</div>
-        {infraReport && (
-          <span className={`badge ${infraReport.all_ok ? 'badge-success' : 'badge-warn'}`}>
-            {okCount}/{infraReport.checks.length} ready
-          </span>
-        )}
+      {/* ── 1 · Environment mapping (dev / qa / prod) ───────────────────── */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.6rem' }}>
+        <div className="section-label" style={{ marginBottom: 0 }}>1 · Environment mapping (dev / qa / prod)</div>
+        <button className="btn btn-sm" onClick={loadInventory}>{envOpen ? '▾ Hide' : '🌐 Map environments'}</button>
       </div>
-
-      {infraLoading && (
-        <div style={{ display: 'flex', gap: '0.6rem', color: 'var(--text-dim)', fontSize: '13px', alignItems: 'center', marginBottom: '1rem' }}>
-          <span className="spinner" /> Checking Azure prerequisites & data paths…
-        </div>
-      )}
-
-      {infraReport && (
-        <div style={{ display: 'grid', gap: '0.5rem', marginBottom: '1rem' }}>
-          {infraReport.checks.map(item => {
-            const st = PREREQ_STATUS[item.status] ?? PREREQ_STATUS.error
-            return (
-              <div key={item.name} className="prereq-row">
-                <span className="prereq-icon" style={{ color: statusColor(item.status) }}>{st.icon}</span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div className="prereq-name">{item.name}</div>
-                  {item.detail && <div className="prereq-detail">{item.detail}</div>}
-                  {item.status !== 'ok' && item.fix && <div className="prereq-fix">→ {item.fix}</div>}
-                </div>
-                <span className="prereq-status" style={{ color: statusColor(item.status) }}>{st.label}</span>
+      {envOpen && (
+        <div style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: '1rem', marginBottom: '1.25rem' }}>
+          <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '0.85rem' }}>
+            dev, qa, and prod can live in <strong>separate resource groups + workspaces</strong>. Pick each below — they're
+            baked into <span style={{ fontFamily: 'JetBrains Mono, monospace' }}>azdopipelines/variables.yml</span> and used by every pipeline.
+          </p>
+          {invLoading && (
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', color: 'var(--text-dim)', fontSize: '13px' }}>
+              <span className="spinner" /> Listing your resource groups & workspaces…
+            </div>
+          )}
+          {inv && inv.errors.length > 0 && !inv.resource_groups.length && (
+            <div className="info-box info-box-warn" style={{ fontSize: '12px' }}>{inv.errors[0]}</div>
+          )}
+          {inv && (inv.resource_groups.length > 0 || inv.workspaces.length > 0) && (
+            <>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.85rem' }}>
+                {(['dev', 'qa', 'prod'] as const).map(env => (
+                  <div key={env} style={{ border: `1px solid ${ENV_BADGE[env].color}40`, borderRadius: 8, padding: '0.75rem', background: ENV_BADGE[env].bg }}>
+                    <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.05em', color: ENV_BADGE[env].color, marginBottom: '0.6rem' }}>
+                      {ENV_BADGE[env].label}
+                    </div>
+                    <label className="field-label">Resource group</label>
+                    <select className="input" value={envCfg[env].resource_group} onChange={e => setEnvField(env, 'resource_group', e.target.value)}>
+                      <option value="">— select —</option>
+                      {inv.resource_groups.map(rg => <option key={rg} value={rg}>{rg}</option>)}
+                    </select>
+                    <label className="field-label" style={{ marginTop: '0.5rem' }}>AML workspace</label>
+                    <select className="input" value={envCfg[env].workspace} onChange={e => setEnvField(env, 'workspace', e.target.value)}>
+                      <option value="">— select —</option>
+                      {inv.workspaces
+                        .filter(w => !envCfg[env].resource_group || w.resource_group === envCfg[env].resource_group)
+                        .map(w => <option key={w.name} value={w.name}>{w.name}</option>)}
+                    </select>
+                    <label className="field-label" style={{ marginTop: '0.5rem' }}>Service connection</label>
+                    <select className="input" value={envCfg[env].service_connection} onChange={e => setEnvField(env, 'service_connection', e.target.value)}>
+                      <option value="">— select —</option>
+                      {inv.service_connections.map(sc => <option key={sc} value={sc}>{sc}</option>)}
+                    </select>
+                  </div>
+                ))}
               </div>
-            )
-          })}
+              <button className="btn btn-primary btn-sm" style={{ marginTop: '0.85rem' }} onClick={saveEnvConfig} disabled={savingEnv}>
+                {savingEnv ? <><span className="spinner" /> Saving…</> : 'Save environment mapping'}
+              </button>
+            </>
+          )}
         </div>
       )}
 
-      <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
-        {infraReport && !infraReport.all_ok && (
-          <button className="btn btn-sm" onClick={discover} disabled={discoverLoading}>
-            {discoverLoading ? <><span className="spinner" /> Discovering…</> : '⚡ Auto-discover Azure config'}
-          </button>
-        )}
-        <button className="btn btn-sm" onClick={() => setPathsOpen(o => !o)}>
-          {pathsOpen ? '▾ Hide data paths' : '✎ Configure data paths'}
-        </button>
+      {/* ── 2 · Data paths ──────────────────────────────────────────────── */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.6rem' }}>
+        <div className="section-label" style={{ marginBottom: 0 }}>2 · Data paths (blob / datastore)</div>
+        <button className="btn btn-sm" onClick={() => setPathsOpen(o => !o)}>{pathsOpen ? '▾ Hide' : '✎ Configure'}</button>
       </div>
-      {discoverResult && (
-        <div className={`info-box ${discoverResult.discovered.length > 0 ? 'info-box-success' : 'info-box-warn'}`} style={{ marginBottom: '0.75rem', fontSize: '12px' }}>
-          {discoverResult.discovered.length > 0
-            ? `✓ Auto-discovered: ${discoverResult.discovered.join(', ')}`
-            : `Nothing found automatically.${discoverResult.errors[0] ? ' ' + discoverResult.errors[0] : ''}`}
-        </div>
-      )}
-
-      {/* Data-path entry (saved to profile; verified in the infra rows above) */}
       {pathsOpen && (
-        <div style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: '1rem', marginBottom: '1rem' }}>
+        <div style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: '1rem', marginBottom: '1.25rem' }}>
           <div className="field-grid field-grid-2">
             {DATA_PATH_FIELDS.filter(f => !f.strategies || f.strategies.includes(strategy)).map(f => (
               <div className="field-group" key={f.key}>
@@ -234,10 +271,58 @@ export default function Step6Validate({ project, onValidated }: Props) {
         </div>
       )}
 
-      {/* ── Deployment chain runner ─────────────────────────────────────── */}
+      {/* ── 3 · Infrastructure readiness ────────────────────────────────── */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.6rem' }}>
+        <div className="section-label" style={{ marginBottom: 0 }}>3 · Infrastructure readiness</div>
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          {infraReport && (
+            <span className={`badge ${infraReport.all_ok ? 'badge-success' : 'badge-warn'}`}>
+              {okCount}/{infraReport.checks.length} ready
+            </span>
+          )}
+          <button className="btn btn-sm" onClick={refreshInfra} disabled={infraLoading}>↻ Re-check</button>
+        </div>
+      </div>
+      {infraLoading && (
+        <div style={{ display: 'flex', gap: '0.6rem', color: 'var(--text-dim)', fontSize: '13px', alignItems: 'center', marginBottom: '1rem' }}>
+          <span className="spinner" /> Checking Azure prerequisites & data paths…
+        </div>
+      )}
+      {infraReport && (
+        <div style={{ display: 'grid', gap: '0.5rem', marginBottom: '0.75rem' }}>
+          {infraReport.checks.map(item => {
+            const st = PREREQ_STATUS[item.status] ?? PREREQ_STATUS.error
+            return (
+              <div key={item.name} className="prereq-row">
+                <span className="prereq-icon" style={{ color: statusColor(item.status) }}>{st.icon}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="prereq-name">{item.name}</div>
+                  {item.detail && <div className="prereq-detail">{item.detail}</div>}
+                  {item.status !== 'ok' && item.fix && <div className="prereq-fix">→ {item.fix}</div>}
+                </div>
+                <span className="prereq-status" style={{ color: statusColor(item.status) }}>{st.label}</span>
+              </div>
+            )
+          })}
+        </div>
+      )}
+      {infraReport && !infraReport.all_ok && (
+        <button className="btn btn-sm" style={{ marginBottom: '0.5rem' }} onClick={discover} disabled={discoverLoading}>
+          {discoverLoading ? <><span className="spinner" /> Discovering…</> : '⚡ Auto-discover Azure config'}
+        </button>
+      )}
+      {discoverResult && (
+        <div className={`info-box ${discoverResult.discovered.length > 0 ? 'info-box-success' : 'info-box-warn'}`} style={{ marginBottom: '0.75rem', fontSize: '12px' }}>
+          {discoverResult.discovered.length > 0
+            ? `✓ Auto-discovered: ${discoverResult.discovered.join(', ')}`
+            : `Nothing found automatically.${discoverResult.errors[0] ? ' ' + discoverResult.errors[0] : ''}`}
+        </div>
+      )}
+
+      {/* ── 4 · Deployment chain (pipelines ready) ──────────────────────── */}
       <div className="divider" />
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-        <div className="section-label" style={{ marginBottom: 0 }}>Deployment chain</div>
+        <div className="section-label" style={{ marginBottom: 0 }}>4 · Deployment chain — pipelines ready check</div>
         <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{doneCount}/{stages.length} stages complete</span>
       </div>
 

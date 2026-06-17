@@ -43,7 +43,7 @@ def _startup() -> None:
 class ProjectCreate(BaseModel):
     name: str = Field(min_length=1, max_length=200)
     repo_url: str
-    pat: str = Field(min_length=1)
+    pat: str = Field(min_length=0)
     base_branch: str = "main"
 
 
@@ -95,6 +95,10 @@ def _get_project(session: Session, project_id: str) -> Project:
 
 @app.post("/api/projects", response_model=ProjectOut)
 def create_project(body: ProjectCreate, session: Session = Depends(get_session)) -> ProjectOut:
+    existing = session.query(Project).filter(Project.repo_url == body.repo_url).first()
+    if existing:
+        raise HTTPException(400, "A project with this repository URL or local path already exists.")
+
     # No auto-scan here: scanning clones the repo, and the clone location is the
     # user-selected folder chosen on the Scan button. Cloning at creation would
     # land in the default workspace inside this agent repo, which we never want.
@@ -180,8 +184,13 @@ class BranchesIn(BaseModel):
 
 @app.post("/api/repos/branches")
 def get_branches(body: BranchesIn) -> dict:
-    """List branches for an AzDO repo URL using the provided PAT."""
+    """List branches for an AzDO repo URL using the provided PAT, or a local repo path."""
     try:
+        if not body.repo_url.startswith("http") and not body.repo_url.startswith("git@"):
+            from src.tools.git_tools import list_local_branches
+            branches = list_local_branches(body.repo_url)
+            return {"branches": branches}
+
         from src.tools.azdo_tools import list_branches_for_url
         branches = list_branches_for_url(body.repo_url, body.pat)
         return {"branches": branches}
@@ -345,6 +354,21 @@ def create_thread(project_id: str, session: Session = Depends(get_session)) -> T
     return ThreadOut(id=thread.id, title=thread.title)
 
 
+class ThreadRename(BaseModel):
+    title: str = Field(min_length=1, max_length=200)
+
+
+@app.patch("/api/threads/{thread_id}", response_model=ThreadOut)
+def rename_thread(thread_id: str, body: ThreadRename,
+                  session: Session = Depends(get_session)) -> ThreadOut:
+    thread = session.get(Thread, thread_id)
+    if not thread:
+        raise HTTPException(404, "thread not found")
+    thread.title = body.title.strip()
+    session.commit()
+    return ThreadOut(id=thread.id, title=thread.title)
+
+
 @app.delete("/api/threads/{thread_id}")
 def delete_thread(thread_id: str, session: Session = Depends(get_session)) -> dict:
     thread = session.get(Thread, thread_id)
@@ -424,6 +448,20 @@ def infra_check(project_id: str, session: Session = Depends(get_session)) -> dic
     except Exception as exc:
         logger.exception("infra check failed")
         raise HTTPException(500, f"infra check failed: {str(exc)[:300]}")
+
+
+@app.get("/api/projects/{project_id}/azure-inventory")
+def azure_inventory_endpoint(project_id: str, session: Session = Depends(get_session)) -> dict:
+    """All resource groups / workspaces / ACRs / service connections, for dev/qa/prod mapping."""
+    from src.app.project_context import activate
+    from src.tools.azure_infra_tools import azure_inventory
+    project = _get_project(session, project_id)
+    activate(project)
+    try:
+        return azure_inventory().model_dump()
+    except Exception as exc:
+        logger.exception("azure inventory failed")
+        raise HTTPException(500, f"azure inventory failed: {str(exc)[:300]}")
 
 
 @app.get("/api/projects/{project_id}/verify-data-paths")

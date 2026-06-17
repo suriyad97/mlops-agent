@@ -131,6 +131,8 @@ export default function Chat({ embeddedProjectId }: { embeddedProjectId?: string
   const [busy, setBusy] = useState(false)
   const [liveSteps, setLiveSteps] = useState<AgentStep[]>([])
   const [liveThinking, setLiveThinking] = useState('')
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editTitle, setEditTitle] = useState('')
   const bottomRef = useRef<HTMLDivElement>(null)
 
   // When embedded, use the prop directly; otherwise fall back to query param
@@ -172,7 +174,20 @@ export default function Chat({ embeddedProjectId }: { embeddedProjectId?: string
     setMessages([])
   }
 
+  function startRename(t: Thread) {
+    setEditingId(t.id)
+    setEditTitle(t.title)
+  }
+  async function commitRename(t: Thread) {
+    const title = editTitle.trim()
+    setEditingId(null)
+    if (!title || title === t.title) return
+    await api.renameThread(t.id, title)
+    await loadThreads(projectId)
+  }
+
   async function removeThread(threadId: string) {
+    if (!confirm('Delete this chat thread? This cannot be undone.')) return
     await api.deleteThread(threadId)
     const ts = await loadThreads(projectId)
     if (activeThread === threadId) {
@@ -253,13 +268,49 @@ export default function Chat({ embeddedProjectId }: { embeddedProjectId?: string
         <div style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--border)', display: 'flex', gap: '0.5rem', alignItems: 'center', overflowX: 'auto', flexShrink: 0 }}>
           <button className="btn btn-sm btn-primary" onClick={newThread} disabled={!projectId}>＋ New thread</button>
           {threads.map(t => (
-            <button key={t.id}
-              className={`btn btn-sm ${activeThread === t.id ? 'btn-active' : ''}`}
-              style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-              onClick={() => selectThread(t.id)}
-            >
-              {t.title}
-            </button>
+            <div key={t.id} style={{ display: 'inline-flex', alignItems: 'stretch', flexShrink: 0 }}>
+              {editingId === t.id ? (
+                <input
+                  autoFocus
+                  className="input"
+                  style={{ width: 150, fontSize: '12px', padding: '0.3rem 0.5rem' }}
+                  value={editTitle}
+                  onChange={e => setEditTitle(e.target.value)}
+                  onBlur={() => commitRename(t)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') commitRename(t)
+                    else if (e.key === 'Escape') setEditingId(null)
+                  }}
+                />
+              ) : (
+                <button
+                  className={`btn btn-sm ${activeThread === t.id ? 'btn-active' : ''}`}
+                  style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                           borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
+                  onClick={() => selectThread(t.id)}
+                  onDoubleClick={() => startRename(t)}
+                  title={`${t.title} — double-click to rename`}
+                >
+                  {t.title}
+                </button>
+              )}
+              <button
+                className="btn btn-sm"
+                style={{ padding: '0.3rem 0.45rem', borderRadius: 0, borderLeft: 'none' }}
+                onClick={() => startRename(t)}
+                title="Rename thread"
+              >
+                ✎
+              </button>
+              <button
+                className="btn btn-sm btn-danger"
+                style={{ padding: '0.3rem 0.5rem', borderTopLeftRadius: 0, borderBottomLeftRadius: 0, borderLeft: 'none' }}
+                onClick={() => removeThread(t.id)}
+                title="Delete thread"
+              >
+                ✕
+              </button>
+            </div>
           ))}
         </div>
 
@@ -325,12 +376,14 @@ export default function Chat({ embeddedProjectId }: { embeddedProjectId?: string
         <div className="flex-1 overflow-y-auto p-2">
           {threads.map((t) => (
             <div key={t.id}
-              className={`group flex items-center justify-between rounded-lg px-3 py-2 text-sm cursor-pointer mb-1 ${
+              className={`group flex items-center justify-between gap-3 rounded-lg px-3 py-2 text-sm cursor-pointer mb-1 ${
                 activeThread === t.id ? 'bg-zinc-800 text-zinc-100' : 'text-zinc-400 hover:bg-zinc-900'}`}
               onClick={() => selectThread(t.id)}>
-              <span className="truncate">{t.title}</span>
+              <div className="truncate flex-1 font-medium" title={t.title}>{t.title}</div>
               <button onClick={(e) => { e.stopPropagation(); removeThread(t.id) }}
-                className="opacity-0 group-hover:opacity-100 text-zinc-500 hover:text-red-400 ml-2">✕</button>
+                className="opacity-100 text-zinc-500 hover:text-red-400 shrink-0 p-1 rounded hover:bg-zinc-800 transition-colors" title="Delete thread">
+                🗑️
+              </button>
             </div>
           ))}
           {projectId && threads.length === 0 && (

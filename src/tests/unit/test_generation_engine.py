@@ -30,6 +30,7 @@ PARAMS = {
     "optuna_trials": 20,
     "drift_threshold": 0.2,
     "retrain_threshold": 0.25,
+    "register_threshold": 0.0,
     "monitoring_cron": "0 6 * * *",
     "instance_type": "Standard_DS2_v2",
     "instance_count": 1,
@@ -40,6 +41,10 @@ PARAMS = {
     "batch_output_path": "",
     "baseline_data_path": "",
     "current_data_path": "",
+    # per-environment Azure targets
+    "sc_dev": "sc-dev", "rg_dev": "rg-dev", "ws_dev": "ws-dev",
+    "sc_qa": "sc-qa", "rg_qa": "rg-qa", "ws_qa": "ws-qa",
+    "sc_prod": "sc-prod", "rg_prod": "rg-prod", "ws_prod": "ws-prod",
 }
 
 

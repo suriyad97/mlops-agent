@@ -8,6 +8,10 @@ trigger:
 
 pool: { vmImage: ubuntu-latest }
 
+# Per-environment Azure targets (dev/qa/prod RG + workspace + service connection)
+variables:
+  - template: variables.yml
+
 variables:
   IMAGE_REPO: {{ safe_name }}
   IMAGE_TAG:  $(Build.BuildId)

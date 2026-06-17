@@ -57,6 +57,7 @@ class GenerationReport(BaseModel):
     scaffold_files: List[str] = Field(default_factory=list)   # TODO stubs — user must implement
     wired_skipped: List[str] = Field(default_factory=list)    # user code reused as-is (not written)
     superseded_files: List[str] = Field(default_factory=list)  # legacy non-standard pipelines to remove
+    needs_attention: List[str] = Field(default_factory=list)  # components that genuinely failed (no template/invalid)
     summary: str = ""
 
 
@@ -182,6 +183,30 @@ def build_params(project_name: str, profile: dict, settings) -> dict:
         **_pipeline_params(profile.get("pipeline_params") or {}),
         # Data-plane paths (blob/datastore); empty falls back to registered data assets
         **_data_path_params(profile.get("data_paths") or {}),
+        # Per-environment Azure targets (dev/qa/prod each its own RG + workspace + service conn)
+        **_env_params(profile, settings),
+    }
+
+
+def _env_params(profile: dict, settings) -> dict:
+    """Resolve dev/qa/prod Azure targets from profile.env_config, with sensible fallbacks:
+    dev falls back to the single discovered/.env values; qa and prod fall back to dev."""
+    env = profile.get("env_config") or {}
+
+    def _get(stage: str, key: str) -> str:
+        return ((env.get(stage) or {}).get(key) or "").strip()
+
+    rg_dev = _get("dev", "resource_group") or profile.get("azure_resource_group") or settings.aml_resource_group or ""
+    ws_dev = _get("dev", "workspace") or profile.get("aml_workspace") or settings.aml_workspace or ""
+    sc_dev = _get("dev", "service_connection") or "azure-connection-dev"
+    return {
+        "sc_dev": sc_dev, "rg_dev": rg_dev, "ws_dev": ws_dev,
+        "sc_qa":  _get("qa", "service_connection") or sc_dev,
+        "rg_qa":  _get("qa", "resource_group") or rg_dev,
+        "ws_qa":  _get("qa", "workspace") or ws_dev,
+        "sc_prod": _get("prod", "service_connection") or sc_dev,
+        "rg_prod": _get("prod", "resource_group") or rg_dev,
+        "ws_prod": _get("prod", "workspace") or ws_dev,
     }
 
 
@@ -191,6 +216,7 @@ _PARAM_DEFAULTS = {
     "optuna_trials": 20,            # HPO trials in the training scaffold
     "drift_threshold": 0.2,         # PSI alert threshold in detect_drift
     "retrain_threshold": 0.25,      # PSI severity that triggers retraining
+    "register_threshold": 0.0,      # min primary metric to register the model (0 = always register)
     "monitoring_cron": "0 6 * * *", # drift-check schedule (daily 06:00 UTC)
     "instance_type": "Standard_DS2_v2",
     "instance_count": 1,
@@ -426,21 +452,36 @@ def generate(
         if p not in standard_paths and p not in report.written_files
     )
 
+    # Classify components with no written files: REUSED (your script — complete) vs
+    # NEEDS-ATTENTION (no template / invalid render). There is NO "missing" category —
+    # a reused component is done, not a gap.
     generated = sum(1 for c in report.components if c.files)
+    reused_components = [
+        c for c in report.components
+        if not c.files and ("reuse" in c.note.lower() or "wired" in c.note.lower())
+    ]
+    report.needs_attention = [
+        f"{c.capability}.{c.component} ({c.note or 'no template available'})"
+        for c in report.components
+        if not c.files and not ("reuse" in c.note.lower() or "wired" in c.note.lower())
+    ]
+
     extra = []
     if report.updated_files:
-        extra.append(f"{len(report.created_files)} new, {len(report.updated_files)} already existed (overwritten)")
+        extra.append(f"{len(report.created_files)} new, {len(report.updated_files)} overwritten")
     if report.adapter_files:
         extra.append(f"{len(report.adapter_files)} adapter(s)")
     if report.scaffold_files:
         extra.append(f"{len(report.scaffold_files)} scaffold(s) to implement")
-    if report.wired_skipped:
-        extra.append(f"{len(report.wired_skipped)} user script(s) reused")
+    if reused_components:
+        extra.append(f"{len(reused_components)} component(s) reuse your scripts (complete, nothing to generate)")
     if report.superseded_files:
         extra.append(f"{len(report.superseded_files)} legacy file(s) superseded — review & delete")
     tail = f"; {', '.join(extra)}" if extra else ""
+    gap = (f"⚠ {len(report.needs_attention)} component(s) need attention"
+           if report.needs_attention
+           else "Nothing is missing — the full standard set for this strategy is in place")
     report.summary = (
-        f"{generated}/{len(report.components)} components generated "
-        f"({len(report.written_files)} files written to the working tree, NOT committed{tail})"
+        f"{len(report.written_files)} files written to the working tree, NOT committed{tail}. {gap}."
     )
     return report

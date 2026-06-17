@@ -294,14 +294,88 @@ def _graph_tools(project_id: str) -> list:
         def _fmt(items: list) -> str:
             return "\n".join(f"  - `{x}`" for x in items) or "  _(none)_"
 
+        attention = p.get("needs_attention", [])
+        gap_line = ("**Nothing is missing** — the full standard set for this strategy is in place. "
+                    "Components that reuse your scripts are complete, not missing."
+                    if not attention else
+                    f"**{len(attention)} component(s) genuinely need attention** (no template / invalid):")
         return "\n".join([
             f"## Generation report\n\n{p.get('summary', '')}\n",
-            f"### Files written ({len(p.get('written_files', []))})", _fmt(p.get('written_files', [])),
+            gap_line, (_fmt(attention) if attention else ""),
+            f"\n### Files written ({len(p.get('written_files', []))})", _fmt(p.get('written_files', [])),
             f"\n### Adapters — wrap your existing code ({len(p.get('adapter_files', []))})", _fmt(p.get('adapter_files', [])),
             f"\n### Scaffolds — you must implement these ({len(p.get('scaffold_files', []))})", _fmt(p.get('scaffold_files', [])),
-            f"\n### Your scripts reused as-is / wired ({len(p.get('wired_skipped', []))})", _fmt(p.get('wired_skipped', [])),
+            f"\n### Your scripts reused as-is / wired — COMPLETE ({len(p.get('wired_skipped', []))})", _fmt(p.get('wired_skipped', [])),
             f"\n### Superseded — review & delete ({len(p.get('superseded_files', []))})", _fmt(p.get('superseded_files', [])),
         ])
+
+    def list_script_parameters() -> str:
+        """List the parameters (argparse CLI args) each of the user's ML scripts defines —
+        e.g. a training script's --register-threshold or --min-accuracy. Read from the
+        knowledge graph (which captures every add_argument call). Use this to answer
+        'what parameters do my scripts take / what can I tune'."""
+        from src.app.db import SessionLocal as SL
+        from src.platform.understanding.retrieval import load_graph
+        try:
+            graph = load_graph(project_id)
+        except FileNotFoundError:
+            return "No knowledge graph — run a scan first."
+        with SL() as s:
+            p = s.get(Project, project_id)
+            if not p:
+                return "project not found"
+            profile = dict(p.profile or {})
+            strategy = profile.get("endpoint_strategy", "both")
+            contract = load_or_propose_contract(p, graph).for_strategy(strategy).resolved()
+            overrides = profile.get("pipeline_params") or {}
+
+        lines, seen = ["## Parameters your scripts define\n"], set()
+        for st in contract.stages:
+            path = st.detected_path or st.standard_path
+            if not path or path in seen:
+                continue
+            seen.add(path)
+            cli = graph.nodes.get(f"file:{path}", {}).get("cli_args", [])
+            if cli:
+                lines.append(f"- **{st.stage}** `{path}` → {', '.join(cli)}")
+        if len(lines) == 1:
+            lines.append("(no argparse parameters detected in the detected scripts)")
+        lines.append("\n## Tunable pipeline parameters (baked into the generated pipelines)")
+        defaults = {"drift_threshold": 0.2, "retrain_threshold": 0.25, "register_threshold": 0.0,
+                    "optuna_trials": 20, "monitoring_cron": "0 6 * * *",
+                    "instance_type": "Standard_DS2_v2", "instance_count": 1}
+        for k, dv in defaults.items():
+            cur = overrides.get(k, dv)
+            lines.append(f"  - {k} = {cur}" + ("  (overridden)" if k in overrides else "  (default)"))
+        lines.append("\nTo change one, ask e.g. \"set register_threshold to 0.85\" and I'll update it "
+                     "(call set_pipeline_parameter), then re-generate to bake it in.")
+        return "\n".join(lines)
+
+    def set_pipeline_parameter(name: str, value: str) -> str:
+        """Set/override a tunable pipeline parameter (drift_threshold, retrain_threshold,
+        register_threshold, optuna_trials, monitoring_cron, instance_type, instance_count, …).
+        Stored in the project profile; baked into the pipelines on the next generation."""
+        from src.app.db import SessionLocal as SL
+        numeric = {"drift_threshold", "retrain_threshold", "register_threshold",
+                   "optuna_trials", "instance_count"}
+        with SL() as s:
+            p = s.get(Project, project_id)
+            if not p:
+                return "project not found"
+            profile = dict(p.profile or {})
+            pp = dict(profile.get("pipeline_params") or {})
+            v = (value or "").strip()
+            if name in numeric:
+                try:
+                    pp[name] = float(v) if "." in v else int(v)
+                except ValueError:
+                    return f"'{value}' is not a number — {name} expects a numeric value."
+            else:
+                pp[name] = v
+            profile["pipeline_params"] = pp
+            p.profile = profile
+            s.commit()
+        return f"✓ Set {name} = {pp[name]}. Re-generate the pipelines (Readiness → Generate) to apply it."
 
     def validate_assets() -> str:
         import json
@@ -428,6 +502,20 @@ def _graph_tools(project_id: str) -> list:
                   "Call this FIRST whenever the user asks about running, triggering, or setting up "
                   "any pipeline — show the table so they know exactly what needs to be created.",
                   check_infra, {"type": "object", "properties": {}}),
+        ReactTool("list_script_parameters",
+                  "List the parameters your ML scripts define (argparse CLI args, e.g. a training "
+                  "script's --register-threshold / --min-accuracy) AND the current tunable pipeline "
+                  "parameters with their values. Use when the user asks what they can tune / what "
+                  "parameters their scripts take.",
+                  list_script_parameters, {"type": "object", "properties": {}}),
+        ReactTool("set_pipeline_parameter",
+                  "Set/override a tunable pipeline parameter (drift_threshold, retrain_threshold, "
+                  "register_threshold, optuna_trials, monitoring_cron, instance_type, instance_count). "
+                  "Persists to the project; re-generation bakes it into the pipelines. Call this when "
+                  "the user asks to change a parameter, e.g. 'set register_threshold to 0.85'.",
+                  set_pipeline_parameter,
+                  {"type": "object", "properties": {"name": {"type": "string"}, "value": {"type": "string"}},
+                   "required": ["name", "value"]}),
         ReactTool("get_generation_report",
                   "What has actually been GENERATED for this project: files written, adapters "
                   "(wrappers over the user's code), scaffolds the user must implement, the user's "
@@ -828,6 +916,74 @@ def register_pipelines(session: Session, project: Project) -> dict:
             "note": "definitions created; every run still requires your approval in chat"}
 
 
+def project_state_card(session: Session, project: Project) -> str:
+    """The COMMON project state every chat thread reads from, recomputed each turn and
+    injected into the system prompt (so it never gets dropped by the message-window slice).
+
+    Authoritative snapshot: profile + detected ML code (contract) + last generation +
+    data-path config. Keeps every thread — new, old, short, long — grounded identically.
+    """
+    profile = dict(project.profile or {})
+    lines = [
+        "\n\n=== CURRENT PROJECT STATE (authoritative; refreshed every turn — trust this over "
+        "your own assumptions, and use tools for deeper detail) ===",
+        f"Project: {project.name} · stage: {project.stage} · "
+        f"endpoint strategy: {profile.get('endpoint_strategy', 'unset')}",
+        f"Repo: {project.repo_url}",
+        f"ML profile: type={profile.get('project_type', '?')}, "
+        f"target={profile.get('target_variable', '?')}, metrics={profile.get('metrics', [])}",
+    ]
+
+    # Your ML code — wired / adapter / scaffold (from the contract)
+    try:
+        from src.platform.understanding.retrieval import load_graph
+        graph = load_graph(project.id)
+        strategy = profile.get("endpoint_strategy", "both")
+        contract = load_or_propose_contract(project, graph).for_strategy(strategy).resolved()
+        code = []
+        for st in contract.stages:
+            where = f" → {st.detected_path}" if st.mode == "wired" else ""
+            code.append(f"  - {st.stage}: {st.mode}{where}")
+        if code:
+            lines.append("Your ML code (contract):")
+            lines.extend(code)
+    except Exception:
+        lines.append("Knowledge graph: not scanned yet (run a scan).")
+
+    # Data paths configured (blob/datastore) — prerequisites
+    dp = profile.get("data_paths") or {}
+    if dp:
+        lines.append("Data paths configured: " + ", ".join(sorted(dp.keys())))
+    else:
+        lines.append("Data paths: none configured yet.")
+
+    # Last generation report — what exists / scaffolds / superseded
+    gen = (
+        session.query(Report)
+        .filter(Report.project_id == project.id, Report.kind == "generation")
+        .order_by(Report.created_at.desc())
+        .first()
+    )
+    if gen and gen.payload:
+        p = gen.payload
+        lines.append(f"Last generation: {p.get('summary', '')}")
+        attn = p.get("needs_attention", [])
+        if attn:
+            lines.append("  Needs attention (no template/invalid): " + ", ".join(attn))
+        else:
+            lines.append("  NOTE: components with no generated file because they REUSE the user's "
+                         "scripts are COMPLETE — there are NO missing components.")
+        if p.get("scaffold_files"):
+            lines.append("  Scaffolds to implement: " + ", ".join(p["scaffold_files"]))
+        if p.get("superseded_files"):
+            lines.append("  Superseded (review & delete): " + ", ".join(p["superseded_files"][:12]))
+    else:
+        lines.append("Generation: nothing generated yet.")
+
+    lines.append("=== END PROJECT STATE ===")
+    return "\n".join(lines)
+
+
 def chat_turn(session: Session, thread: Thread, user_text: str) -> str:
     """Persist the user message, run the project-scoped agent, persist the reply."""
     activate(thread.project)
@@ -837,17 +993,10 @@ def chat_turn(session: Session, thread: Thread, user_text: str) -> str:
     session.commit()
     session.refresh(thread)
 
-    history = [
-        {"role": m.role, "content": m.content}
-        for m in thread.messages
-    ]
-    context_note = (
-        f"[project context] name={thread.project.name} repo={thread.project.repo_url} "
-        f"stage={thread.project.stage} profile={thread.project.profile}"
-    )
-    history.insert(0, {"role": "user", "content": context_note})
+    history = [{"role": m.role, "content": m.content} for m in thread.messages]
+    card = project_state_card(session, thread.project)
 
-    reply = chat(history, extra_tools=_graph_tools(thread.project.id))
+    reply = chat(history, extra_tools=_graph_tools(thread.project.id), system_suffix=card)
     session.add(Message(id=new_id(), thread_id=thread.id, role="assistant", content=reply))
 
     if thread.title == "New thread" and len(thread.messages) <= 2:
@@ -866,14 +1015,10 @@ def chat_turn_stream(session: Session, thread: Thread, user_text: str):
     session.refresh(thread)
 
     history = [{"role": m.role, "content": m.content} for m in thread.messages]
-    context_note = (
-        f"[project context] name={thread.project.name} repo={thread.project.repo_url} "
-        f"stage={thread.project.stage} profile={thread.project.profile}"
-    )
-    history.insert(0, {"role": "user", "content": context_note})
+    card = project_state_card(session, thread.project)
 
     final = ""
-    for event in chat_stream(history, extra_tools=_graph_tools(thread.project.id)):
+    for event in chat_stream(history, extra_tools=_graph_tools(thread.project.id), system_suffix=card):
         if event.get("type") == "final":
             final = event.get("content", "")
         yield event

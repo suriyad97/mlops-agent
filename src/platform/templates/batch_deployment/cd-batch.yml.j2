@@ -2,6 +2,10 @@
 trigger: none
 pool: { vmImage: ubuntu-latest }
 
+# Per-environment Azure targets (dev/qa/prod RG + workspace + service connection)
+variables:
+  - template: variables.yml
+
 stages:
   - stage: DeployDev
     jobs:

@@ -21,7 +21,7 @@ evidence:
 deliverables:
   container_definition: [Dockerfile, aml/conda.yml]
   aml_environment: [aml/environment.yml]
-  azdo_env_pipeline: [azdopipelines/ci-environment.yml]
+  azdo_env_pipeline: [azdopipelines/variables.yml, azdopipelines/ci-environment.yml]
 validation:
   - static yaml/schema checks
   - local az ml environment create (dev)

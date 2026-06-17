@@ -1,0 +1,18 @@
+# Per-environment Azure targets — generated from your dev/qa/prod selection.
+# dev, qa, and prod can each live in a SEPARATE resource group + AML workspace,
+# reached through a SEPARATE AzDO service connection (managed identity).
+# Every pipeline pulls these in via:  variables: - template: variables.yml
+variables:
+  SERVICE_CONNECTION_DEV: {{ sc_dev }}
+  RESOURCE_GROUP_DEV: {{ rg_dev }}
+  WORKSPACE_DEV: {{ ws_dev }}
+
+  SERVICE_CONNECTION_QA: {{ sc_qa }}
+  RESOURCE_GROUP_QA: {{ rg_qa }}
+  WORKSPACE_QA: {{ ws_qa }}
+
+  SERVICE_CONNECTION_PROD: {{ sc_prod }}
+  RESOURCE_GROUP_PROD: {{ rg_prod }}
+  WORKSPACE_PROD: {{ ws_prod }}
+
+  ACR_NAME: {{ acr_name }}

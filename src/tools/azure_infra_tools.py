@@ -415,6 +415,97 @@ def auto_discover_from_azdo() -> DiscoveredConfig:
     return result
 
 
+# ── full inventory (for per-environment dev/qa/prod mapping) ─────────────────────
+
+class AzureInventory(BaseModel):
+    """Everything the user can map to dev / qa / prod environments."""
+    subscription_id: str = ""
+    resource_groups: List[str] = []
+    workspaces: List[dict] = []            # [{name, resource_group}]
+    acrs: List[dict] = []                  # [{name, resource_group}]
+    service_connections: List[str] = []    # AzDO service-connection names
+    errors: List[str] = []
+
+
+def _rg_from_id(rid: str) -> str:
+    parts = rid.split("/")
+    try:
+        return parts[parts.index("resourceGroups") + 1]
+    except (ValueError, IndexError):
+        return ""
+
+
+def _service_connection_names() -> List[str]:
+    import requests as req
+    try:
+        from src.tools.azdo_tools import _base_url, _headers
+        resp = req.get(f"{_base_url()}/_apis/serviceendpoint/endpoints?api-version=7.1",
+                       headers=_headers(), timeout=30)
+        if resp.status_code < 300:
+            return sorted(ep["name"] for ep in resp.json().get("value", []) if ep.get("name"))
+    except Exception:
+        pass
+    return []
+
+
+def azure_inventory() -> AzureInventory:
+    """List ALL resource groups, AML workspaces, ACRs, and AzDO service connections so the
+    user can assign separate ones to dev / qa / prod. Enterprise setups split these across
+    environments; the single-value auto-discover can't express that."""
+    ARM = "https://management.azure.com"
+    inv = AzureInventory()
+    inv.service_connections = _service_connection_names()
+
+    # subscription from the AzDO ARM service connection
+    import requests as req
+    try:
+        from src.tools.azdo_tools import _base_url, _headers
+        resp = req.get(f"{_base_url()}/_apis/serviceendpoint/endpoints?api-version=7.1",
+                       headers=_headers(), timeout=30)
+        if resp.status_code < 300:
+            for ep in resp.json().get("value", []):
+                if "azurerm" in ep.get("type", "").lower() and ep.get("data", {}).get("subscriptionId"):
+                    inv.subscription_id = ep["data"]["subscriptionId"]
+                    break
+    except Exception as exc:
+        inv.errors.append(f"AzDO service connections: {str(exc)[:150]}")
+
+    if not inv.subscription_id:
+        inv.errors.append("No subscription found in the AzDO ARM service connection.")
+        return inv
+
+    try:
+        from azure.identity import DefaultAzureCredential
+        token = DefaultAzureCredential().get_token(f"{ARM}/.default").token
+    except Exception as exc:
+        inv.errors.append(f"Azure auth failed ({str(exc)[:120]}) — run 'az login'.")
+        return inv
+
+    sub = inv.subscription_id
+    try:
+        rgs = _arm_get(token, f"{ARM}/subscriptions/{sub}/resourcegroups?api-version=2021-04-01").get("value", [])
+        inv.resource_groups = sorted(r["name"] for r in rgs)
+    except Exception as exc:
+        inv.errors.append(f"resource groups: {str(exc)[:150]}")
+    try:
+        wss = _arm_get(token, f"{ARM}/subscriptions/{sub}/providers/Microsoft.MachineLearningServices/workspaces?api-version=2023-04-01").get("value", [])
+        inv.workspaces = sorted(
+            ({"name": w["name"], "resource_group": _rg_from_id(w.get("id", ""))} for w in wss),
+            key=lambda w: w["name"],
+        )
+    except Exception as exc:
+        inv.errors.append(f"workspaces: {str(exc)[:150]}")
+    try:
+        acrs = _arm_get(token, f"{ARM}/subscriptions/{sub}/providers/Microsoft.ContainerRegistry/registries?api-version=2023-01-01-preview").get("value", [])
+        inv.acrs = sorted(
+            ({"name": a["name"], "resource_group": _rg_from_id(a.get("id", ""))} for a in acrs),
+            key=lambda a: a["name"],
+        )
+    except Exception as exc:
+        inv.errors.append(f"ACRs: {str(exc)[:150]}")
+    return inv
+
+
 # ── public API ─────────────────────────────────────────────────────────────────
 
 def check_all_prerequisites(profile_overrides: dict | None = None) -> InfraReport:

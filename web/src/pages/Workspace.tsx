@@ -231,15 +231,15 @@ export default function Workspace() {
         {renderStep()}
       </main>
 
-      {/* ── Chat FAB ─────────────────────────────────────────────────────── */}
-      {project && (
+      {/* ── Chat FAB (hidden while the drawer is open — the header ✕ closes it) ── */}
+      {project && !chatOpen && (
         <button
           id="chat-fab"
           className="chat-fab"
-          onClick={() => setChatOpen(o => !o)}
+          onClick={() => setChatOpen(true)}
           title="Open agent chat"
         >
-          {chatOpen ? '✕' : '💬'}
+          💬
         </button>
       )}
 

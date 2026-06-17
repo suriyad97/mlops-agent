@@ -9,4 +9,5 @@ components:
       - { src: environment.yml.j2, dest: aml/environment.yml }
   azdo_env_pipeline:
     files:
+      - { src: variables.yml.j2, dest: azdopipelines/variables.yml }
       - { src: ci-environment.yml.j2, dest: azdopipelines/ci-environment.yml }

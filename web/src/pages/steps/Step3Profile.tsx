@@ -10,7 +10,6 @@ const ENDPOINT_OPTIONS = [
   { value: 'realtime', label: '⚡ Real-time', hint: 'Online endpoint, low-latency inference' },
   { value: 'batch',    label: '📦 Batch',     hint: 'Batch scoring on large datasets' },
   { value: 'both',     label: '⚡📦 Both',    hint: 'Deploy both endpoint types' },
-  { value: 'none',     label: '⛔ None',      hint: 'Training pipeline only, no deployment' },
 ]
 
 const PROJECT_TYPES = ['regression', 'classification', 'multi-class classification', 'object detection', 'NLP', 'forecasting', 'clustering']
@@ -32,8 +31,7 @@ export default function Step3Profile({ project, onSaved }: Props) {
   const [retrainThresh, setRetrainThresh] = useState(String(pp.retrain_threshold ?? '0.25'))
   const [endpoint,      setEndpoint]      = useState(str('endpoint_strategy', 'realtime'))
   const [monCron,       setMonCron]       = useState(String(pp.monitoring_cron ?? '0 6 * * *'))
-  const [instanceType,  setInstanceType]  = useState(String(pp.instance_type ?? 'Standard_DS2_v2'))
-  const [instanceCount, setInstanceCount] = useState(String(pp.instance_count ?? '1'))
+
 
   const [saving, setSaving] = useState(false)
   const [error,  setError]  = useState('')
@@ -49,8 +47,7 @@ export default function Step3Profile({ project, onSaved }: Props) {
         ...(driftThresh   ? { drift_threshold:   parseFloat(driftThresh)   } : {}),
         ...(retrainThresh ? { retrain_threshold:  parseFloat(retrainThresh) } : {}),
         ...(monCron       ? { monitoring_cron:    monCron }                   : {}),
-        ...(instanceType  ? { instance_type:      instanceType }              : {}),
-        ...(instanceCount ? { instance_count:     parseInt(instanceCount) }   : {}),
+
       }
 
       const updated = await api.patchProfile(project.id, {
@@ -211,18 +208,7 @@ export default function Step3Profile({ project, onSaved }: Props) {
             {ENDPOINT_OPTIONS.find(o => o.value === endpoint)?.hint}
           </p>
 
-          {(endpoint === 'realtime' || endpoint === 'both') && (
-            <div className="field-grid field-grid-2" style={{ marginTop: '1rem' }}>
-              <div className="field-group">
-                <label className="field-label" htmlFor="p3-instance-type">Endpoint instance type</label>
-                <input id="p3-instance-type" className="input input-mono" placeholder="Standard_DS2_v2" value={instanceType} onChange={e => setInstanceType(e.target.value)} />
-              </div>
-              <div className="field-group">
-                <label className="field-label" htmlFor="p3-instance-count">Instance count</label>
-                <input id="p3-instance-count" type="number" min="1" className="input" placeholder="1" value={instanceCount} onChange={e => setInstanceCount(e.target.value)} />
-              </div>
-            </div>
-          )}
+
         </div>
 
         {/* Data paths are configured with the infrastructure prerequisites in Step 6. */}

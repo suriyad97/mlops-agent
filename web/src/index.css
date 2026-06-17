@@ -646,7 +646,7 @@ textarea.input { resize: vertical; min-height: 80px; line-height: 1.5; }
   top: 0;
   right: 0;
   bottom: 0;
-  width: 480px;
+  width: 700px;
   max-width: 95vw;
   background: var(--surface);
   border-left: 1px solid var(--border);

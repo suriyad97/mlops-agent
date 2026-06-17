@@ -26,6 +26,15 @@ export type DiscoverResult = {
   report: InfraReport
 }
 
+export type AzureInventory = {
+  subscription_id: string
+  resource_groups: string[]
+  workspaces: { name: string; resource_group: string }[]
+  acrs: { name: string; resource_group: string }[]
+  service_connections: string[]
+  errors: string[]
+}
+
 export type ContractStage = {
   stage: string
   display_name: string
@@ -118,8 +127,18 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     ...init,
   })
   if (!response.ok) {
-    const detail = await response.json().catch(() => ({}))
-    throw new Error(detail.detail ?? `HTTP ${response.status}`)
+    const data = await response.json().catch(() => ({}))
+    let errMsg = `HTTP ${response.status}`
+    if (data.detail) {
+      if (typeof data.detail === 'string') {
+        errMsg = data.detail
+      } else if (Array.isArray(data.detail)) {
+        errMsg = data.detail.map((e: any) => `${e.loc?.join('.')}: ${e.msg}`).join(', ')
+      } else {
+        errMsg = JSON.stringify(data.detail)
+      }
+    }
+    throw new Error(errMsg)
   }
   return response.json()
 }
@@ -145,6 +164,7 @@ export const api = {
   checkProjectInfra: (id: string) => request<InfraReport>(`/api/projects/${id}/infra-check`),
   verifyDataPaths: (id: string) => request<InfraReport>(`/api/projects/${id}/verify-data-paths`),
   discoverProjectInfra: (id: string) => request<DiscoverResult>(`/api/projects/${id}/infra-discover`, { method: 'POST' }),
+  getAzureInventory: (id: string) => request<AzureInventory>(`/api/projects/${id}/azure-inventory`),
   generateProject: (id: string) =>
     request<GenerationReport>(`/api/projects/${id}/generate`, { method: 'POST', body: JSON.stringify({}) }),
   getGenerationReport: (id: string) =>
@@ -159,6 +179,8 @@ export const api = {
   listThreads: (projectId: string) => request<Thread[]>(`/api/projects/${projectId}/threads`),
   createThread: (projectId: string) =>
     request<Thread>(`/api/projects/${projectId}/threads`, { method: 'POST' }),
+  renameThread: (threadId: string, title: string) =>
+    request<Thread>(`/api/threads/${threadId}`, { method: 'PATCH', body: JSON.stringify({ title }) }),
   deleteThread: (threadId: string) => request(`/api/threads/${threadId}`, { method: 'DELETE' }),
   getMessages: (threadId: string) => request<Message[]>(`/api/threads/${threadId}/messages`),
   sendMessage: (threadId: string, content: string) =>

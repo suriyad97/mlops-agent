@@ -401,7 +401,7 @@ export default function Step5Generate({ project, onGenerated }: Props) {
             >
               {generating
                 ? <><span className="spinner" style={{ width: 18, height: 18 }} /> Building pipelines…</>
-                : '⚡ Build Missing Pipelines'}
+                : <>Build Missing Pipelines <span className="btn-island">↗</span></>}
             </button>
             <p style={{ marginTop: '0.85rem', fontSize: '12px', color: 'var(--text-muted)' }}>
               Files are written to your local working tree only — nothing is committed until Step 7.

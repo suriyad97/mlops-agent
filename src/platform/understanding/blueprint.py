@@ -41,6 +41,7 @@ class RepositoryBlueprint(BaseModel):
     aml_assets: List[str] = Field(default_factory=list)
     azdo_pipelines: List[str] = Field(default_factory=list)
     github_workflows: List[str] = Field(default_factory=list)
+    dockerfiles: List[str] = Field(default_factory=list)
     graph_stats: dict = Field(default_factory=dict)
 
 
@@ -181,5 +182,6 @@ def extract_blueprint(repo_path: str, graph: nx.DiGraph) -> RepositoryBlueprint:
         aml_assets=assets_by_role(graph, "aml_asset"),
         azdo_pipelines=assets_by_role(graph, "azdo_pipeline"),
         github_workflows=assets_by_role(graph, "github_workflow"),
+        dockerfiles=assets_by_role(graph, "dockerfile"),
         graph_stats=graph_stats(graph),
     )

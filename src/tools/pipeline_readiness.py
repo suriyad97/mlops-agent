@@ -52,7 +52,51 @@ class ReadinessReport(BaseModel):
         return "\n".join(lines)
 
 
-# ── individual stage checks ────────────────────────────────────────────────────
+def _find_file(repo_path: str, target_name: str, search_dirs: tuple = ()) -> str | None:
+    """Search for a file by name across the repo, preferring conventional locations.
+
+    Checks ``search_dirs`` first (relative to repo root), then falls back to a
+    recursive search.  Returns a repo-relative path or ``None``.
+    """
+    from pathlib import Path
+    base = Path(repo_path)
+    target_lower = target_name.lower()
+
+    # 1. Check conventional locations first
+    for d in search_dirs:
+        candidate = base / d / target_name
+        if candidate.exists():
+            return str(candidate.relative_to(base)).replace("\\", "/")
+
+    # 2. Check repo root
+    root_candidate = base / target_name
+    if root_candidate.exists():
+        return str(root_candidate.relative_to(base)).replace("\\", "/")
+
+    # 3. Recursive search (case-insensitive on name)
+    for p in base.rglob("*"):
+        if p.is_file() and p.name.lower() == target_lower and ".git" not in p.parts:
+            return str(p.relative_to(base)).replace("\\", "/")
+    return None
+
+
+def _find_dockerfile(repo_path: str) -> str | None:
+    """Find a Dockerfile anywhere in the repo, handling name variants."""
+    from pathlib import Path
+    base = Path(repo_path)
+
+    # Check common locations
+    for candidate in ["Dockerfile", "docker/Dockerfile", "environment/Dockerfile",
+                       "src/Dockerfile", "build/Dockerfile"]:
+        if (base / candidate).exists():
+            return candidate
+
+    # Recursive search for any file named Dockerfile* (case-insensitive)
+    for p in base.rglob("*"):
+        if p.is_file() and p.name.lower().startswith("dockerfile") and ".git" not in p.parts:
+            return str(p.relative_to(base)).replace("\\", "/")
+    return None
+
 
 def _check_ci(repo_path: str, profile: dict) -> PipelineStatus:
     """CI is ready when the environment definition files exist in the repo."""
@@ -61,12 +105,21 @@ def _check_ci(repo_path: str, profile: dict) -> PipelineStatus:
     present: List[str] = []
 
     if repo_path:
-        base = Path(repo_path)
-        for f in ["Dockerfile", "aml/conda.yml", "aml/environment.yml"]:
-            if (base / f).exists():
-                present.append(f)
+        # Search for Dockerfile anywhere in the repo
+        dockerfile = _find_dockerfile(repo_path)
+        if dockerfile:
+            present.append(f"Dockerfile ({dockerfile})")
+        else:
+            blockers.append("missing: Dockerfile (not found anywhere in the repo)")
+
+        # Search for conda/environment files in common locations
+        conda_dirs = ("aml", "environment", "config", "")
+        for target in ["conda.yml", "environment.yml"]:
+            found = _find_file(repo_path, target, search_dirs=conda_dirs)
+            if found:
+                present.append(f"{target} ({found})")
             else:
-                blockers.append(f"missing: {f}")
+                blockers.append(f"missing: {target}")
     else:
         blockers.append("repo not cloned yet — run Scan first")
 

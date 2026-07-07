@@ -168,9 +168,9 @@ export default function Workspace() {
               className="btn btn-sm btn-danger" 
               onClick={handleDeleteProject}
               title="Delete project"
-              style={{ padding: '0.3rem 0.6rem', fontSize: '11px', background: 'rgba(248,113,113,0.1)', color: '#f87171', border: '1px solid rgba(248,113,113,0.3)' }}
+              style={{ padding: '0.3rem 0.6rem', fontSize: '11px' }}
             >
-              🗑 Delete
+              Delete
             </button>
           )}
         </div>
@@ -180,7 +180,6 @@ export default function Workspace() {
           <span style={{
             width: 7, height: 7, borderRadius: '50%',
             background: healthy === null ? 'var(--text-muted)' : healthy ? 'var(--success)' : 'var(--danger)',
-            boxShadow: healthy ? '0 0 6px var(--success)' : 'none',
             display: 'inline-block',
           }} />
           {healthy === null ? 'Connecting…' : healthy ? 'Backend connected' : 'Offline'}
@@ -218,10 +217,10 @@ export default function Workspace() {
 
         {/* Project info footer */}
         {project && (
-          <div style={{ marginTop: 'auto', padding: '1rem 1.1rem', borderTop: '1px solid var(--border)' }}>
-            <div style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>Current project</div>
-            <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text)', marginBottom: '0.2rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{project.name}</div>
-            <div style={{ fontSize: '10px', fontFamily: 'JetBrains Mono, monospace', color: 'var(--accent-hover)' }}>{project.stage}</div>
+          <div style={{ marginTop: 'auto', padding: '1rem 1.4rem', borderTop: '1px solid var(--border)' }}>
+            <div style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>Current project</div>
+            <div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text)', marginBottom: '0.2rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{project.name}</div>
+            <div style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--text-dim)' }}>{project.stage}</div>
           </div>
         )}
       </aside>
@@ -239,7 +238,7 @@ export default function Workspace() {
           onClick={() => setChatOpen(true)}
           title="Open agent chat"
         >
-          💬
+          Chat
         </button>
       )}
 
@@ -248,10 +247,10 @@ export default function Workspace() {
         <>
           <div className="chat-overlay" onClick={() => setChatOpen(false)} />
           <div className="chat-drawer">
-            <div style={{ padding: '0.9rem 1rem', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--surface)' }}>
+            <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg)' }}>
               <div>
-                <div style={{ fontWeight: 600, fontSize: '14px' }}>Agent Chat</div>
-                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{project.name}</div>
+                <div style={{ fontWeight: 500, fontSize: '15px' }}>Agent Chat</div>
+                <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{project.name}</div>
               </div>
               <button
                 className="btn btn-sm btn-icon"

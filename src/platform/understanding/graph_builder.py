@@ -26,6 +26,16 @@ YAML_EXT = {".yml", ".yaml"}
 SKIP_DIRS = {"node_modules", ".venv", "venv", "__pycache__", "dist", "build"}
 MAX_FILE_BYTES = 200_000
 
+# Extensionless / special files the graph should recognise by name.
+DOCKERFILE_NAMES = frozenset({"dockerfile"})
+DOCKERFILE_PREFIXES = ("dockerfile.",)   # dockerfile.dev, dockerfile.prod etc.
+EXTENSIONLESS_ROLES = {
+    "makefile": "build_script",
+    "procfile": "runtime_config",
+    ".dockerignore": "docker_config",
+    ".gitignore": "vcs_config",
+}
+
 
 def _lang(path: str) -> str:
     suffix = Path(path).suffix.lower()
@@ -156,6 +166,39 @@ def _yaml_role(rel: str, doc: dict, raw: str) -> str:
     return "config"
 
 
+def _add_dockerfile(graph: nx.DiGraph, rel: str, raw: str, all_files: List[str]) -> None:
+    """Tag a Dockerfile node with its role and key metadata."""
+    file_node = f"file:{rel}"
+    # Extract base image(s) for summary
+    from_images = re.findall(r"^FROM\s+([^\s]+)", raw, re.MULTILINE)
+    has_cmd = bool(re.search(r"^(CMD|ENTRYPOINT)\s", raw, re.MULTILINE))
+    summary_parts = [f"dockerfile: base={', '.join(from_images[:3]) or '?'}"]
+    if has_cmd:
+        summary_parts.append("has CMD/ENTRYPOINT")
+    graph.nodes[file_node].update({
+        "role": "dockerfile",
+        "summary": " | ".join(summary_parts),
+    })
+    # Cross-reference: Dockerfile may COPY repo files
+    for other in all_files:
+        if other == rel:
+            continue
+        name = Path(other).name
+        if (other in raw or (name in raw and len(name) > 6)) and Path(other).suffix in (
+            ".py", ".txt", ".cfg", ".toml", ".yml", ".yaml", ".sh",
+        ):
+            graph.add_edge(file_node, f"file:{other}", kind="references")
+
+
+def _add_extensionless(graph: nx.DiGraph, rel: str, role: str) -> None:
+    """Tag an extensionless file node (Makefile, Procfile, etc.) with its role."""
+    file_node = f"file:{rel}"
+    graph.nodes[file_node].update({
+        "role": role,
+        "summary": f"{role}: {rel}",
+    })
+
+
 def _add_yaml_file(graph: nx.DiGraph, rel: str, raw: str, all_files: List[str]) -> None:
     file_node = f"file:{rel}"
     try:
@@ -210,6 +253,7 @@ def build_graph(repo_path: str) -> nx.DiGraph:
         if path.stat().st_size > MAX_FILE_BYTES:
             continue
         suffix = Path(rel).suffix.lower()
+        name_lower = Path(rel).name.lower()
         try:
             raw = path.read_text(encoding="utf-8", errors="ignore")
         except OSError:
@@ -218,6 +262,10 @@ def build_graph(repo_path: str) -> nx.DiGraph:
             _add_python_file(graph, rel, raw, module_index)
         elif suffix in YAML_EXT:
             _add_yaml_file(graph, rel, raw, files)
+        elif name_lower in DOCKERFILE_NAMES or name_lower.startswith(DOCKERFILE_PREFIXES):
+            _add_dockerfile(graph, rel, raw, files)
+        elif name_lower in EXTENSIONLESS_ROLES:
+            _add_extensionless(graph, rel, EXTENSIONLESS_ROLES[name_lower])
 
     _resolve_calls(graph)
     _mark_submits(graph)

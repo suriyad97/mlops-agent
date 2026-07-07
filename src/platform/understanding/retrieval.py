@@ -141,18 +141,24 @@ def graph_digest(graph: nx.DiGraph, max_chars: int = 6000) -> str:
                 sections.append(f"    def {fn}")
 
     for role, label in (("aml_asset", "AML ASSETS"), ("azdo_pipeline", "AZDO PIPELINES"),
-                        ("github_workflow", "GITHUB WORKFLOWS")):
+                        ("github_workflow", "GITHUB WORKFLOWS"),
+                        ("dockerfile", "DOCKERFILES"), ("build_script", "BUILD SCRIPTS")):
         paths = assets_by_role(graph, role)
         if paths:
             sections.append(f"{label}:")
             for p in paths[:15]:
-                refs = [
-                    graph.nodes[s].get("path", "")
-                    for s in graph.successors(f"file:{p}")
-                    if graph[f"file:{p}"][s].get("kind") in ("references", "submits")
-                ]
-                suffix = f" -> {', '.join(refs[:4])}" if refs else ""
-                sections.append(f"  {p}{suffix}")
+                node_key = f"file:{p}"
+                if node_key in graph:
+                    summary = graph.nodes[node_key].get("summary", "")
+                    refs = [
+                        graph.nodes[s].get("path", "")
+                        for s in graph.successors(node_key)
+                        if graph[node_key][s].get("kind") in ("references", "submits")
+                    ]
+                    suffix = f" -> {', '.join(refs[:4])}" if refs else ""
+                    sections.append(f"  {p}{suffix}")
+                else:
+                    sections.append(f"  {p}")
 
     centrality = nx.degree_centrality(graph)
     code_files = sorted(
